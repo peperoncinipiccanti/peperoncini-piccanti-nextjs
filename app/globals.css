@@ -1,0 +1,74 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/*
+ * Design token estratti dal sito attuale (vedi Guida-SEO-Performance-Migrazione.docx, §1):
+ * teal #00a498, corallo #c85849, nero peperoncino #141414. Stessa palette
+ * usata nel tema WordPress a blocchi, cosi' i due frontend restano coerenti.
+ */
+@theme {
+	--color-base: #ffffff;
+	--color-sfondo-chiaro: #f4f3f1;
+	--color-testo: #242424;
+	--color-testo-secondario: #5c5c5c;
+	--color-notte: #141414;
+	--color-teal: #00a498;
+	--color-corallo: #c85849;
+	--color-bordo: #e3e1dd;
+
+	--font-sans: var(--font-lato), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+	color: var(--color-testo-secondario);
+	background: var(--color-base);
+}
+
+h1, h2, h3, h4, h5, h6 {
+	color: var(--color-testo);
+	font-weight: 900;
+	text-transform: uppercase;
+	letter-spacing: 0.01em;
+	line-height: 1.15;
+}
+
+a {
+	color: var(--color-teal);
+}
+
+a:hover {
+	color: var(--color-corallo);
+}
+
+/* ---------- Badge piccantezza: stesso anello CSS puro del tema WordPress ---------- */
+.pp-rating-badge__ring {
+	--pp-ring-size: 4.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--pp-ring-size);
+	height: var(--pp-ring-size);
+	border-radius: 9999px;
+	background:
+		radial-gradient(closest-side, rgba(20, 20, 20, 0.72) 72%, transparent 73% 100%),
+		conic-gradient(var(--color-teal) calc(var(--pp-rating-percent, 0) * 1%), rgba(255, 255, 255, 0.35) 0);
+}
+
+/* ---------- Carosello hero: scroll-snap nativo, i pulsanti sono un progressive enhancement ---------- */
+.pp-hero-scroller {
+	scrollbar-width: none;
+}
+
+.pp-hero-scroller::-webkit-scrollbar {
+	display: none;
+}
+
+/*
+ * Etichetta categoria "a nastro": stesso taglio a parallelogramma delle
+ * etichette teal sopra i titoli nel tema Edition (es. "RICETTE PICCANTI"
+ * sopra l'immagine hero). Il taglio e' sul contenitore, il testo dentro
+ * resta dritto perche' non eredita il clip-path del genitore.
+ */
+.pp-tag {
+	clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+}
