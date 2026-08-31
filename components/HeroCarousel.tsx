@@ -8,7 +8,7 @@ import type { Post } from '@/lib/types';
 import { timeAgo } from '@/lib/format';
 import { RatingBadge } from './RatingBadge';
 
-const AUTOPLAY_MS = 2000;
+const AUTOPLAY_MS = 3500;
 
 /**
  * Lo scorrimento e' CSS puro (scroll-snap): funziona anche con JavaScript
