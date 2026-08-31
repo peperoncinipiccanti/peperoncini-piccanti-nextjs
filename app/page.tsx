@@ -1,6 +1,7 @@
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PostCard } from '@/components/PostCard';
-import { getCategoryBySlug, getFeaturedPosts, getPosts } from '@/lib/wp';
+import { RecentComments } from '@/components/RecentComments';
+import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments } from '@/lib/wp';
 
 export default async function HomePage() {
 	// Il carosello hero mostra gli articoli scelti a mano come "Featured" nel
@@ -11,7 +12,18 @@ export default async function HomePage() {
 	const heroPosts = await getFeaturedPosts(4);
 	const heroIds = heroPosts.map((p) => p.id);
 
-	const { posts: featured } = await getPosts({ perPage: 6, exclude: heroIds });
+	// Sezione "Peperoncini Piccanti | Le mie recensioni": nel vecchio tema
+	// e' semplicemente l'elenco piu' recente della categoria "Varieta' di
+	// Peperoncino" (gli articoli con il punteggio a cerchio), un post grande
+	// in evidenza + 4 sotto. Stesso slug categoria gia' usato per il menu e
+	// per l'archivio di categoria (app/[...slug]/page.tsx).
+	const varietaCategory = await getCategoryBySlug('varieta-peperoncino');
+	const { posts: reviews } = varietaCategory
+		? await getPosts({ perPage: 5, categoryId: varietaCategory.id, exclude: heroIds })
+		: { posts: [] };
+	const [reviewFeatured, ...reviewRest] = reviews;
+
+	const recentComments = await getRecentComments(7);
 
 	const recipesCategory = await getCategoryBySlug('ricette-peperoncino-piccante');
 	const { posts: recipes } = recipesCategory
@@ -22,13 +34,27 @@ export default async function HomePage() {
 		<main id="top">
 			<HeroCarousel posts={heroPosts} />
 
-			<section className="mx-auto max-w-6xl px-4 py-14">
-				<h2 className="mb-6 text-3xl">In evidenza</h2>
-				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-					{featured.map((post) => (
-						<PostCard key={post.id} post={post} />
-					))}
+			{/*
+			 * Layout 2/3 + 1/3 del vecchio tema: a sinistra il widget
+			 * "Le mie recensioni" (1 post grande + 4 piccoli), a destra la
+			 * sidebar "Ultimi commenti". Su mobile la sidebar scende sotto.
+			 */}
+			<section className="mx-auto grid max-w-6xl gap-10 px-4 py-14 lg:grid-cols-3">
+				<div className="lg:col-span-2">
+					<h2 className="mb-6 text-3xl">Peperoncini Piccanti | Le mie recensioni</h2>
+					{reviewFeatured && (
+						<div className="mb-6">
+							<PostCard post={reviewFeatured} size="large" priority />
+						</div>
+					)}
+					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+						{reviewRest.map((post) => (
+							<PostCard key={post.id} post={post} />
+						))}
+					</div>
 				</div>
+
+				<RecentComments comments={recentComments} />
 			</section>
 
 			{recipes.length > 0 && (

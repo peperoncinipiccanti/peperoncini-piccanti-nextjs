@@ -82,6 +82,32 @@ export interface WPCategory {
 	count: number;
 }
 
+/**
+ * Risposta di /wp/v2/comments. Con `_embed=1` WordPress espone il post
+ * genitore nella relazione "up" (non "wp:post", che non esiste per i
+ * commenti) — serve solo per mostrare il titolo dell'articolo commentato
+ * nel widget "Ultimi commenti", esattamente come il vecchio tema.
+ */
+export interface WPComment {
+	id: number;
+	post: number;
+	author_name: string;
+	date: string;
+	content: WPRendered;
+	link: string;
+	_embedded?: {
+		up?: { id: number; slug: string; link: string; title: WPRendered }[];
+	};
+}
+
+/** Forma "pulita" di un commento per il widget "Ultimi commenti" in home. */
+export interface RecentComment {
+	id: number;
+	authorName: string;
+	postTitle: string;
+	href: string;
+}
+
 /** Forma "pulita" usata dai componenti, dopo la normalizzazione in lib/wp.ts. */
 export interface Post {
 	id: number;

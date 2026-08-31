@@ -1,4 +1,4 @@
-import type { Post, WPCategory, WPMedia, WPPost } from './types';
+import type { Post, RecentComment, WPCategory, WPComment, WPMedia, WPPost } from './types';
 
 const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
 
@@ -258,6 +258,42 @@ export async function getAllCategories(): Promise<WPCategory[]> {
 export async function getTickerPosts(limit = 6): Promise<{ id: number; title: string; href: string }[]> {
 	const { posts } = await getPosts({ perPage: limit });
 	return posts.map((post) => ({ id: post.id, title: post.title, href: `/${post.slug}` }));
+}
+
+/**
+ * Widget "Ultimi commenti" della home (vecchio tema Edition): usa
+ * l'endpoint standard `/wp/v2/comments` di WordPress, non una particolarita'
+ * del tema, quindi non richiede un plugin companion ne' di indovinare campi
+ * custom. Con `_embed=1` WordPress include il post commentato nella
+ * relazione "up" (`_embedded.up[0]`), da cui si prende il titolo per la
+ * scritta "Autore su Titolo articolo"; `link` punta gia' al commento sulla
+ * pagina dell'articolo (stesso comportamento del widget originale).
+ *
+ * Alcuni siti disabilitano questo endpoint via plugin di sicurezza (per
+ * evitare scraping/spam sui commenti): in quel caso si ritorna un array
+ * vuoto e la sezione semplicemente non compare, invece di rompere la home.
+ */
+export async function getRecentComments(limit = 7): Promise<RecentComment[]> {
+	try {
+		const comments = await wpFetch<WPComment[]>(
+			`/comments?per_page=${limit}&orderby=date&order=desc&_embed=1`,
+			{ tags: ['comments'] }
+		);
+
+		return comments
+			.map((comment) => {
+				const post = comment._embedded?.up?.[0];
+				return {
+					id: comment.id,
+					authorName: decodeHtmlEntities(comment.author_name || 'Anonimo'),
+					postTitle: post ? decodeHtmlEntities(post.title.rendered) : '',
+					href: comment.link,
+				};
+			})
+			.filter((comment) => comment.postTitle !== '');
+	} catch {
+		return [];
+	}
 }
 
 /**

@@ -8,20 +8,35 @@ import { RatingBadge } from './RatingBadge';
  * `sizes` e' impostato per dire al browser esattamente quanto e' grande
  * l'immagine in ogni breakpoint, cosi' next/image scarica solo i byte
  * necessari invece della versione piu' grande disponibile.
+ *
+ * `size="large"` e' la variante usata per il post "in evidenza" del widget
+ * "Le mie recensioni" in home (vedi app/page.tsx): stessa card, solo piu'
+ * bassa/larga e con titolo piu' grande, per renderla visivamente doppia
+ * rispetto alle 4 card piccole sotto — replica del vecchio tema.
  */
-export function PostCard({ post, priority = false }: { post: Post; priority?: boolean }) {
+export function PostCard({
+	post,
+	priority = false,
+	size = 'default',
+}: {
+	post: Post;
+	priority?: boolean;
+	size?: 'default' | 'large';
+}) {
+	const isLarge = size === 'large';
+
 	return (
 		<article className="group relative isolate overflow-hidden bg-notte">
 			<Link href={`/${post.slug}`} className="absolute inset-0 z-10" aria-label={post.title} />
 
-			<div className="relative aspect-[4/3] w-full overflow-hidden">
+			<div className={`relative w-full overflow-hidden ${isLarge ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-[4/3]'}`}>
 				{post.featuredImage ? (
 					<Image
 						src={post.featuredImage.url}
 						alt={post.featuredImage.alt}
 						fill
 						priority={priority}
-						sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+						sizes={isLarge ? '(min-width: 1024px) 66vw, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'}
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
 					/>
 				) : (
@@ -46,7 +61,9 @@ export function PostCard({ post, priority = false }: { post: Post; priority?: bo
 						))}
 					</ul>
 				)}
-				<h3 className="text-xl font-black uppercase leading-tight text-white">{post.title}</h3>
+				<h3 className={`font-black uppercase leading-tight text-white ${isLarge ? 'text-2xl sm:text-3xl' : 'text-xl'}`}>
+					{post.title}
+				</h3>
 			</div>
 		</article>
 	);
