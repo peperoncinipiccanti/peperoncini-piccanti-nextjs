@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { FacebookIcon, InstagramIcon } from './icons';
+import { BreakingTicker } from './BreakingTicker';
+import { getTickerPosts } from '@/lib/wp';
 
 type MenuItem = { label: string; href: string };
 
@@ -11,11 +13,13 @@ type MenuItem = { label: string; href: string };
 const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
 const LOGO_URL = `${WP_API_URL}/wp-content/uploads/2021/02/logo-www.peperoncinipiccanti.com_Tavola-disegno-1-1.jpg`;
 
-export function Header({ menu }: { menu: MenuItem[] }) {
+export async function Header({ menu }: { menu: MenuItem[] }) {
+	const tickerItems = await getTickerPosts();
+
 	return (
 		<header>
 			<div className="flex items-center justify-between gap-4 bg-notte px-4 py-2 text-white">
-				<p className="text-[0.7rem] font-black uppercase tracking-widest text-teal">Post piccanti!</p>
+				<BreakingTicker items={tickerItems} />
 				<div className="flex items-center gap-3">
 					<a
 						href="https://www.facebook.com/peperoncinipiccanti"

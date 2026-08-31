@@ -44,12 +44,44 @@ async function wpFetchWithHeaders<T>(
 	};
 }
 
+/**
+ * Questo sito NON usa il campo nativo "Immagine in evidenza" di WordPress
+ * (tutti i post hanno `featured_media: 0`): le immagini sono inserite a mano
+ * dentro al corpo dell'articolo (`content.rendered`), tipicamente come primo
+ * `<img>` avvolto in un link al lightbox. Quando manca l'embed di
+ * `wp:featuredmedia` si estrae quindi la prima immagine dall'HTML del
+ * contenuto, cosi' PostCard e HeroCarousel hanno comunque un'immagine da
+ * mostrare invece di renderizzare il nulla.
+ */
+function extractFirstImageFromContent(html: string): { url: string; alt: string; width: number; height: number } | null {
+	const imgMatch = html.match(/<img[^>]*>/i);
+	if (!imgMatch) return null;
+	const imgTag = imgMatch[0];
+
+	const srcMatch = imgTag.match(/\bsrc=["']([^"']+)["']/i);
+	const url = srcMatch?.[1];
+	if (!url) return null;
+
+	const altMatch = imgTag.match(/\balt=["']([^"']*)["']/i);
+	const widthMatch = imgTag.match(/\bwidth=["']?(\d+)["']?/i);
+	const heightMatch = imgTag.match(/\bheight=["']?(\d+)["']?/i);
+
+	return {
+		url,
+		alt: altMatch?.[1] ?? '',
+		width: widthMatch?.[1] ? Number(widthMatch[1]) : 1200,
+		height: heightMatch?.[1] ? Number(heightMatch[1]) : 900,
+	};
+}
+
 function normalizePost(raw: WPPost): Post {
 	const media = raw._embedded?.['wp:featuredmedia']?.[0];
 	const author = raw._embedded?.author?.[0];
 	const terms = raw._embedded?.['wp:term']?.flat() ?? [];
 	const ratingRaw = raw.meta?.piccantezza;
 	const rating = ratingRaw === undefined || ratingRaw === '' ? null : Number(ratingRaw);
+
+	const contentImage = media ? null : extractFirstImageFromContent(raw.content.rendered);
 
 	return {
 		id: raw.id,
@@ -67,7 +99,14 @@ function normalizePost(raw: WPPost): Post {
 					width: media.media_details?.width ?? 1200,
 					height: media.media_details?.height ?? 900,
 				}
-			: null,
+			: contentImage
+				? {
+						url: contentImage.url,
+						alt: contentImage.alt || raw.title.rendered,
+						width: contentImage.width,
+						height: contentImage.height,
+					}
+				: null,
 		categories: terms
 			.filter((t) => t.taxonomy === 'category')
 			.map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
@@ -138,6 +177,19 @@ export async function getCategoryBySlug(slug: string): Promise<WPCategory | null
 
 export async function getAllCategories(): Promise<WPCategory[]> {
 	return wpFetch<WPCategory[]>('/categories?per_page=100&hide_empty=1', { tags: ['categories'] });
+}
+
+/**
+ * Barra "Post piccanti!" in cima al sito: nel tema Edition originale e' un
+ * ticker verticale (bxSlider) che scorre in autoplay tra alcuni articoli in
+ * evidenza, in stile "ultim'ora". Qui si usano semplicemente gli ultimi
+ * articoli pubblicati: e' il criterio piu' vicino a "ultim'ora" (niente
+ * plugin di statistiche viste/popolarita' da replicare) e non richiede
+ * dipendenze aggiuntive sul backend WordPress.
+ */
+export async function getTickerPosts(limit = 6): Promise<{ id: number; title: string; href: string }[]> {
+	const { posts } = await getPosts({ perPage: limit });
+	return posts.map((post) => ({ id: post.id, title: post.title, href: `/${post.slug}` }));
 }
 
 /**
