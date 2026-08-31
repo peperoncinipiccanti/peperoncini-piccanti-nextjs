@@ -8,6 +8,9 @@ import type { RecentComment } from '@/lib/types';
  * (lib/wp.ts), che a sua volta ritorna un array vuoto se l'endpoint dei
  * commenti e' disabilitato sul WordPress — per questo il componente
  * ritorna null in quel caso invece di mostrare una sezione vuota.
+ *
+ * Ogni commento e' un callout grafico (sfondo nero al 20%, non una semplice
+ * riga separata da un bordo) come nel widget originale.
  */
 export function RecentComments({ comments }: { comments: RecentComment[] }) {
 	if (comments.length === 0) return null;
@@ -15,10 +18,13 @@ export function RecentComments({ comments }: { comments: RecentComment[] }) {
 	return (
 		<aside aria-label="Ultimi commenti">
 			<h2 className="mb-6 text-2xl">Ultimi commenti</h2>
-			<ul className="flex flex-col divide-y divide-bordo">
+			<ul className="flex flex-col gap-3">
 				{comments.map((comment) => (
-					<li key={comment.id} className="py-3 first:pt-0">
-						<Link href={comment.href} className="group block text-sm leading-snug text-testo-secondario">
+					<li key={comment.id}>
+						<Link
+							href={comment.href}
+							className="group block bg-black/20 px-4 py-3 text-sm leading-snug text-testo-secondario transition hover:bg-black/30"
+						>
 							<span className="font-bold text-testo group-hover:text-teal">{comment.authorName}</span>{' '}
 							su{' '}
 							<span className="font-semibold text-testo group-hover:text-teal">{comment.postTitle}</span>
