@@ -12,11 +12,16 @@ import { PostCard } from './PostCard';
  * arrivano gia' pronti da app/page.tsx (4 chiamate a getPostBySlug per gli
  * slug esatti indicati).
  *
- * Le frecce sono sovrapposte allo slide stesso (bordo sinistro/destro,
- * verticalmente centrate) esattamente come nel bxSlider del vecchio tema —
- * non un pulsante separato accanto al titolo (quello stile e' proprio di
- * ReviewsCarousel, un widget diverso). Nessuna striscia di titoli sotto:
- * quella e' specifica dell'hero.
+ * Nel vecchio tema erano sempre visibili 3 card insieme (bxSlider con
+ * minSlides:3), e le frecce scorrevano di una card alla volta rivelando le
+ * successive — non uno slide singolo a tutta larghezza. Ogni card e' quindi
+ * larga 1/3 del contenitore da desktop in su (1/2 su tablet, intera su
+ * mobile), e le frecce spostano lo scroller della larghezza di UNA card
+ * (letta dal primo figlio), non dell'intero contenitore.
+ *
+ * Le frecce restano sovrapposte al carosello (bordo sinistro/destro,
+ * verticalmente centrate) come nel bxSlider originale — non un pulsante
+ * separato accanto al titolo (quello stile e' proprio di ReviewsCarousel).
  */
 export function PreserveCarousel({ posts }: { posts: Post[] }) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
@@ -24,7 +29,9 @@ export function PreserveCarousel({ posts }: { posts: Post[] }) {
 	function scrollByOne(direction: 1 | -1) {
 		const el = scrollerRef.current;
 		if (!el) return;
-		el.scrollBy({ left: direction * el.clientWidth, behavior: 'smooth' });
+		const item = el.firstElementChild as HTMLElement | null;
+		const step = item?.clientWidth ?? el.clientWidth;
+		el.scrollBy({ left: direction * step, behavior: 'smooth' });
 	}
 
 	if (posts.length === 0) return null;
@@ -34,15 +41,15 @@ export function PreserveCarousel({ posts }: { posts: Post[] }) {
 			<h2 className="mb-6 text-3xl">Come conservare i peperoncini | I metodi più comuni</h2>
 
 			<div className="relative">
-				<div ref={scrollerRef} className="pp-hero-scroller flex snap-x snap-mandatory overflow-x-auto">
+				<div ref={scrollerRef} className="pp-hero-scroller flex snap-x snap-mandatory gap-6 overflow-x-auto">
 					{posts.map((post) => (
-						<div key={post.id} className="w-full flex-none snap-start">
-							<PostCard post={post} size="large" />
+						<div key={post.id} className="w-full flex-none snap-start sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]">
+							<PostCard post={post} />
 						</div>
 					))}
 				</div>
 
-				{posts.length > 1 && (
+				{posts.length > 3 && (
 					<div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex -translate-y-1/2 justify-between px-2">
 						<button
 							type="button"
