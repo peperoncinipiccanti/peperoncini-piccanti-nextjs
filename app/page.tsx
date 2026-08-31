@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { HeroCarousel } from '@/components/HeroCarousel';
-import { PostCard } from '@/components/PostCard';
+import { PreserveCarousel } from '@/components/PreserveCarousel';
 import { RecentComments } from '@/components/RecentComments';
 import { ReviewsCarousel } from '@/components/ReviewsCarousel';
-import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments } from '@/lib/wp';
+import { getCategoryBySlug, getFeaturedPosts, getPostBySlug, getPosts, getRecentComments } from '@/lib/wp';
 
 export default async function HomePage() {
 	// Il carosello hero mostra gli articoli scelti a mano come "Featured" nel
@@ -53,10 +53,21 @@ export default async function HomePage() {
 		: { posts: [] };
 	const ctaImage = coltivarePosts[0]?.featuredImage ?? reviews[0]?.featuredImage ?? null;
 
-	const recipesCategory = await getCategoryBySlug('ricette-peperoncino-piccante');
-	const { posts: recipes } = recipesCategory
-		? await getPosts({ perPage: 6, categoryId: recipesCategory.id })
-		: { posts: [] };
+	// Sezione "Come conservare i peperoncini | I metodi piu' comuni": nel
+	// vecchio tema NON e' l'elenco della categoria Ricette (che li' non
+	// compariva affatto in questa posizione), ma uno slider con una manciata
+	// di articoli scelti a mano dall'editor — quindi si prendono per slug
+	// esatto, non per categoria, con una sola serie di richieste in
+	// parallelo (cache ISR come il resto del sito).
+	const preserveSlugs = [
+		'come-evitare-botulino-nelle-conserve',
+		'congelare-peperoncini',
+		'peperoncini-essiccati',
+		'come-essiccare-peperoncini',
+	];
+	const preservePosts = (await Promise.all(preserveSlugs.map((slug) => getPostBySlug(slug)))).filter(
+		(post): post is NonNullable<typeof post> => post !== null
+	);
 
 	return (
 		<main id="top">
@@ -111,14 +122,9 @@ export default async function HomePage() {
 				</div>
 			</section>
 
-			{recipes.length > 0 && (
+			{preservePosts.length > 0 && (
 				<section className="mx-auto max-w-6xl px-4 pb-16">
-					<h2 className="mb-6 text-3xl">Ricette piccanti</h2>
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{recipes.map((post) => (
-							<PostCard key={post.id} post={post} />
-						))}
-					</div>
+					<PreserveCarousel posts={preservePosts} />
 				</section>
 			)}
 		</main>
