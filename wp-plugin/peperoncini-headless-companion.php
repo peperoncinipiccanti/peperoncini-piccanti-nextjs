@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
- * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone/gestisce il campo "piccantezza", e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
+ * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
  * Version: 1.0.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
@@ -11,67 +11,72 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * ------------------------------------------------------------------
- * Campo "piccantezza" — identico a quello gia' presente nel tema a blocchi
- * peperoncini-piccanti. E' duplicato qui (invece che richiesto dal tema)
- * apposta: in un setup headless il tema attivo su WordPress e' spesso
- * irrilevante per il pubblico (il frontend vero e' Next.js), quindi questa
- * funzionalita' deve poter vivere in un plugin, non dipendere da quale
- * tema e' selezionato in Aspetto. Se il tema peperoncini-piccanti resta
- * comunque attivo, va bene lo stesso: le due registrazioni non confliggono.
+ * Punteggio "piccantezza" mostrato in home e sulle card — NON e' un campo
+ * a se stante: sul tema Edition ogni articolo ha gia' un metabox nativo
+ * "Review" (campi ACF: review_post Si/No, review_criteria = ripetitore di
+ * coppie criteria/rating 0-10, review_title). Il cerchio con il numero che
+ * si vede sul sito e' semplicemente la MEDIA dei "rating" in
+ * review_criteria — per questo e' compilato solo sugli articoli di tipo
+ * "Varieta' di Peperoncino" (dove l'editor ha attivato "Is this a review
+ * post?") e non sulle ricette, che non hanno questi campi valorizzati.
+ * Qui si legge quel dato via ACF (get_field) e si espone gia' calcolato,
+ * cosi' il frontend Next.js non deve reimplementare la logica del tema ne'
+ * duplicare un campo che finirebbe scollegato dai dati reali.
  * ------------------------------------------------------------------
  */
-function pphc_register_meta() {
-	register_post_meta(
+function pphc_register_review_field() {
+	register_rest_field(
 		'post',
-		'piccantezza',
+		'pphc_review',
 		array(
-			'type'              => 'number',
-			'description'       => __( 'Livello di piccantezza da 0 a 10, esposto in REST per il frontend Next.js.', 'peperoncini-headless' ),
-			'single'            => true,
-			'show_in_rest'      => true,
-			'sanitize_callback' => function ( $value ) {
-				return max( 0, min( 10, (float) $value ) );
+			'get_callback' => function ( $post ) {
+				if ( ! function_exists( 'get_field' ) ) {
+					return null;
+				}
+
+				$is_review = get_field( 'review_post', $post['id'] );
+				if ( 'yes' !== $is_review && true !== $is_review ) {
+					return null;
+				}
+
+				$rows = get_field( 'review_criteria', $post['id'] );
+				$criteria = array();
+				$total = 0;
+				$count = 0;
+
+				if ( is_array( $rows ) ) {
+					foreach ( $rows as $row ) {
+						$label = isset( $row['criteria'] ) ? sanitize_text_field( $row['criteria'] ) : '';
+						$rating = isset( $row['rating'] ) && '' !== $row['rating'] ? (float) $row['rating'] : null;
+
+						if ( '' === $label && null === $rating ) {
+							continue;
+						}
+
+						$criteria[] = array( 'label' => $label, 'rating' => $rating );
+
+						if ( null !== $rating ) {
+							$total += $rating;
+							++$count;
+						}
+					}
+				}
+
+				return array(
+					'score'    => $count > 0 ? round( $total / $count, 1 ) : null,
+					'title'    => (string) get_field( 'review_title', $post['id'] ),
+					'criteria' => $criteria,
+				);
 			},
-			'auth_callback'     => function () {
-				return current_user_can( 'edit_posts' );
-			},
+			'schema'       => array(
+				'description' => __( 'Punteggio review (media dei "Review Criteria" del tema Edition) per gli articoli marcati come review; null altrimenti (es. le ricette).', 'peperoncini-headless' ),
+				'type'        => array( 'object', 'null' ),
+				'context'     => array( 'view' ),
+			),
 		)
 	);
 }
-add_action( 'init', 'pphc_register_meta' );
-
-function pphc_add_rating_meta_box() {
-	add_meta_box( 'pphc_rating_box', __( 'Livello di piccantezza', 'peperoncini-headless' ), 'pphc_render_rating_meta_box', 'post', 'side', 'default' );
-}
-add_action( 'add_meta_boxes', 'pphc_add_rating_meta_box' );
-
-function pphc_render_rating_meta_box( $post ) {
-	$value = get_post_meta( $post->ID, 'piccantezza', true );
-	wp_nonce_field( 'pphc_save_rating', 'pphc_rating_nonce' );
-	printf(
-		'<label for="pphc_rating_field">%s</label><br /><input type="number" min="0" max="10" step="0.1" id="pphc_rating_field" name="pphc_rating_field" value="%s" style="width:100%%;margin-top:6px;" />',
-		esc_html__( 'Da 0 (per niente) a 10 (estremo)', 'peperoncini-headless' ),
-		esc_attr( $value )
-	);
-}
-
-function pphc_save_rating_meta_box( $post_id ) {
-	if ( ! isset( $_POST['pphc_rating_nonce'] ) || ! wp_verify_nonce( $_POST['pphc_rating_nonce'], 'pphc_save_rating' ) ) {
-		return;
-	}
-	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-		return;
-	}
-	if ( ! current_user_can( 'edit_post', $post_id ) ) {
-		return;
-	}
-	if ( isset( $_POST['pphc_rating_field'] ) && '' !== $_POST['pphc_rating_field'] ) {
-		update_post_meta( $post_id, 'piccantezza', max( 0, min( 10, (float) $_POST['pphc_rating_field'] ) ) );
-	} else {
-		delete_post_meta( $post_id, 'piccantezza' );
-	}
-}
-add_action( 'save_post', 'pphc_save_rating_meta_box' );
+add_action( 'rest_api_init', 'pphc_register_review_field' );
 
 /**
  * ------------------------------------------------------------------

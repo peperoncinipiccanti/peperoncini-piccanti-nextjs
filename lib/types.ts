@@ -54,12 +54,19 @@ export interface WPPost {
 	featured_media: number;
 	categories: number[];
 	tags: number[];
-	meta?: {
-		piccantezza?: number | string;
-	};
 	/** Aggiunti dal plugin companion (register_rest_field): vedi wp-plugin/peperoncini-headless-companion.php */
 	is_featured?: boolean;
 	pphc_menu_order?: number;
+	/**
+	 * Punteggio review del tema Edition (media dei "Review Criteria"), solo
+	 * per i post marcati come review — es. le varieta' di peperoncino, MAI
+	 * le ricette, che semplicemente non hanno questi campi compilati.
+	 */
+	pphc_review?: {
+		score: number | null;
+		title: string;
+		criteria: { label: string; rating: number | null }[];
+	} | null;
 	_embedded?: {
 		author?: WPAuthor[];
 		'wp:featuredmedia'?: WPMedia[];
@@ -84,6 +91,11 @@ export interface Post {
 	title: string;
 	excerpt: string;
 	content: string;
+	/**
+	 * Punteggio 0-10 (media dei "Review Criteria" del tema Edition), presente
+	 * solo sugli articoli marcati come review (es. varieta' di peperoncino).
+	 * null sulle ricette e su tutto il resto: RatingBadge non si mostra.
+	 */
 	rating: number | null;
 	/** true se marcato "Featured" nel backoffice WP (vedi Post Settings / Featured Order del tema Edition). */
 	featured: boolean;

@@ -103,8 +103,10 @@ function normalizePost(raw: WPPost): Post {
 	const media = raw._embedded?.['wp:featuredmedia']?.[0];
 	const author = raw._embedded?.author?.[0];
 	const terms = raw._embedded?.['wp:term']?.flat() ?? [];
-	const ratingRaw = raw.meta?.piccantezza;
-	const rating = ratingRaw === undefined || ratingRaw === '' ? null : Number(ratingRaw);
+	// Il punteggio arriva gia' calcolato dal plugin companion (media dei
+	// "Review Criteria" del tema Edition) ed e' null di default: cosi' le
+	// ricette (che non sono "review post") non mostrano mai il cerchio.
+	const rating = raw.pphc_review?.score ?? null;
 
 	const contentImage = media ? null : extractFirstImageFromContent(raw.content.rendered);
 	const bestMedia = media ? pickBestMediaUrl(media) : null;
