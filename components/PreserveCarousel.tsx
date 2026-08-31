@@ -10,9 +10,13 @@ import { PostCard } from './PostCard';
  * tema: un carosello (bxSlider nel tema originale) che ruota tra alcuni
  * articoli scelti a mano — non un elenco di categoria, per questo i post
  * arrivano gia' pronti da app/page.tsx (4 chiamate a getPostBySlug per gli
- * slug esatti indicati). Stesso meccanismo di scroll-snap + frecce di
- * HeroCarousel, ma senza la striscia di titoli sotto (quella e' specifica
- * dell'hero) e con card in stile "large" per un solo articolo alla volta.
+ * slug esatti indicati).
+ *
+ * Le frecce sono sovrapposte allo slide stesso (bordo sinistro/destro,
+ * verticalmente centrate) esattamente come nel bxSlider del vecchio tema —
+ * non un pulsante separato accanto al titolo (quello stile e' proprio di
+ * ReviewsCarousel, un widget diverso). Nessuna striscia di titoli sotto:
+ * quella e' specifica dell'hero.
  */
 export function PreserveCarousel({ posts }: { posts: Post[] }) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
@@ -27,36 +31,37 @@ export function PreserveCarousel({ posts }: { posts: Post[] }) {
 
 	return (
 		<div>
-			<div className="mb-6 flex items-center justify-between gap-4">
-				<h2 className="text-3xl">Come conservare i peperoncini | I metodi più comuni</h2>
+			<h2 className="mb-6 text-3xl">Come conservare i peperoncini | I metodi più comuni</h2>
+
+			<div className="relative">
+				<div ref={scrollerRef} className="pp-hero-scroller flex snap-x snap-mandatory overflow-x-auto">
+					{posts.map((post) => (
+						<div key={post.id} className="w-full flex-none snap-start">
+							<PostCard post={post} size="large" />
+						</div>
+					))}
+				</div>
+
 				{posts.length > 1 && (
-					<div className="flex flex-none gap-2">
+					<div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex -translate-y-1/2 justify-between px-2">
 						<button
 							type="button"
 							onClick={() => scrollByOne(-1)}
-							className="flex h-9 w-9 items-center justify-center bg-notte text-white transition hover:bg-teal"
+							className="pointer-events-auto flex h-10 w-10 items-center justify-center bg-notte/70 text-white transition hover:bg-teal"
 							aria-label="Articolo precedente"
 						>
-							<ChevronLeft size={18} />
+							<ChevronLeft size={22} />
 						</button>
 						<button
 							type="button"
 							onClick={() => scrollByOne(1)}
-							className="flex h-9 w-9 items-center justify-center bg-notte text-white transition hover:bg-teal"
+							className="pointer-events-auto flex h-10 w-10 items-center justify-center bg-notte/70 text-white transition hover:bg-teal"
 							aria-label="Articolo successivo"
 						>
-							<ChevronRight size={18} />
+							<ChevronRight size={22} />
 						</button>
 					</div>
 				)}
-			</div>
-
-			<div ref={scrollerRef} className="pp-hero-scroller flex snap-x snap-mandatory overflow-x-auto">
-				{posts.map((post) => (
-					<div key={post.id} className="w-full flex-none snap-start">
-						<PostCard post={post} size="large" />
-					</div>
-				))}
 			</div>
 		</div>
 	);

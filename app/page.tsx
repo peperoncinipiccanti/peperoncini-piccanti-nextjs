@@ -123,7 +123,7 @@ export default async function HomePage() {
 			</section>
 
 			{preservePosts.length > 0 && (
-				<section className="mx-auto max-w-6xl px-4 pb-16">
+				<section className="mx-auto max-w-6xl px-4 py-14">
 					<PreserveCarousel posts={preservePosts} />
 				</section>
 			)}
