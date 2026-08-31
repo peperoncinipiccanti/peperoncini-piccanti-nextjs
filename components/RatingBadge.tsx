@@ -12,12 +12,15 @@ export function RatingBadge({ rating, className = '' }: { rating: number | null;
 
 	return (
 		<div
-			className={`pp-rating-badge__ring ${className}`}
+			className={`pp-rating-badge__ring group ${className}`}
 			style={{ ['--pp-rating-percent' as string]: percent }}
 			role="img"
 			aria-label={`Livello di piccantezza: ${label} su 10`}
 		>
-			<span className="text-base font-black text-white" aria-hidden="true">
+			<span
+				className="text-xl font-black text-white transition-transform duration-200 ease-out group-hover:scale-125"
+				aria-hidden="true"
+			>
 				{label}
 			</span>
 		</div>
