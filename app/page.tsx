@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PostCard } from '@/components/PostCard';
@@ -29,6 +30,22 @@ export default async function HomePage() {
 
 	const recentComments = await getRecentComments(7);
 
+	// Banner "Vuoi imparare come coltivare in casa il peperoncino?": nel
+	// vecchio tema e' una foto a tutta larghezza con overlay nero al 35% e
+	// testo bianco sopra (verificato dal vivo via CSS del sito originale:
+	// classe ".overlay", background-color nero, opacity 0.35) — sul sito
+	// live quella specifica foto e' pero' rotta (stesso problema noto dei
+	// file "full" cancellati dal server, vedi pickBestMediaUrl), quindi li'
+	// si vede solo il grigio piatto dell'overlay senza immagine sotto: non e'
+	// il design voluto, e' un bug preesistente. Qui si usa percio' la foto in
+	// evidenza dell'articolo piu' recente della categoria "Coltivare il
+	// Peperoncino" (stesso slug del menu) invece di riprodurre il bug.
+	const coltivareCategory = await getCategoryBySlug('come-coltivare-peperoncino');
+	const { posts: coltivarePosts } = coltivareCategory
+		? await getPosts({ perPage: 1, categoryId: coltivareCategory.id })
+		: { posts: [] };
+	const ctaImage = coltivarePosts[0]?.featuredImage ?? null;
+
 	const recipesCategory = await getCategoryBySlug('ricette-peperoncino-piccante');
 	const { posts: recipes } = recipesCategory
 		? await getPosts({ perPage: 6, categoryId: recipesCategory.id })
@@ -56,10 +73,24 @@ export default async function HomePage() {
 			 * vecchio tema: blocco a tutta larghezza tra il widget recensioni
 			 * e "Ricette piccanti", link fisso alla guida (stesso slug usato nel
 			 * menu, vedi getMenu() in lib/wp.ts) — testo statico del tema, non
-			 * arriva da WordPress.
+			 * arriva da WordPress. Foto di sfondo + overlay nero al 35%, come
+			 * nel CSS originale (classe ".overlay"); bg-notte piatto resta solo
+			 * come fallback se la categoria non ha ancora un articolo con foto.
 			 */}
-			<section className="bg-notte py-16 text-center text-white">
-				<div className="mx-auto max-w-2xl px-4">
+			<section className="relative overflow-hidden bg-notte py-16 text-center text-white">
+				{ctaImage && (
+					<>
+						<Image
+							src={ctaImage.url}
+							alt=""
+							fill
+							sizes="100vw"
+							className="object-cover"
+						/>
+						<div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+					</>
+				)}
+				<div className="relative mx-auto max-w-2xl px-4">
 					<h2 className="text-2xl uppercase text-white sm:text-3xl">
 						Vuoi imparare come coltivare in casa il peperoncino?
 					</h2>
