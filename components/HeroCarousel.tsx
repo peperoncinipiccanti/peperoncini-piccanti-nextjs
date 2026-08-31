@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -8,14 +8,23 @@ import type { Post } from '@/lib/types';
 import { timeAgo } from '@/lib/format';
 import { RatingBadge } from './RatingBadge';
 
+const AUTOPLAY_MS = 2000;
+
 /**
  * Lo scorrimento e' CSS puro (scroll-snap): funziona anche con JavaScript
  * disattivato o prima che React idrati la pagina. I pulsanti prev/next sono
  * un progressive enhancement — per questo e' l'unico componente "use client"
  * di tutta l'interfaccia: tutto il resto resta Server Component, zero JS.
+ *
+ * L'autoplay legge ogni volta la posizione REALE dello scroller (scrollLeft)
+ * invece di tenere un indice separato in state: cosi' se l'utente scorre a
+ * mano (swipe/trackpad) l'autoplay riparte da li', senza "scattare indietro"
+ * alla prossima tick. Si ferma al passaggio del mouse (comportamento
+ * standard dei carousel del vecchio tema) e riparte quando esce.
  */
 export function HeroCarousel({ posts }: { posts: Post[] }) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
+	const pausedRef = useRef(false);
 
 	function scrollByOne(direction: 1 | -1) {
 		const el = scrollerRef.current;
@@ -23,10 +32,37 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 		el.scrollBy({ left: direction * el.clientWidth, behavior: 'smooth' });
 	}
 
+	useEffect(() => {
+		if (posts.length <= 1) return;
+
+		const id = setInterval(() => {
+			const el = scrollerRef.current;
+			if (!el || pausedRef.current) return;
+
+			const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+			if (atEnd) {
+				el.scrollTo({ left: 0, behavior: 'smooth' });
+			} else {
+				el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
+			}
+		}, AUTOPLAY_MS);
+
+		return () => clearInterval(id);
+	}, [posts.length]);
+
 	if (posts.length === 0) return null;
 
 	return (
-		<section className="relative" aria-label="Articoli in evidenza">
+		<section
+			className="relative"
+			aria-label="Articoli in evidenza"
+			onMouseEnter={() => {
+				pausedRef.current = true;
+			}}
+			onMouseLeave={() => {
+				pausedRef.current = false;
+			}}
+		>
 			<div
 				ref={scrollerRef}
 				className="pp-hero-scroller flex snap-x snap-mandatory overflow-x-auto"
