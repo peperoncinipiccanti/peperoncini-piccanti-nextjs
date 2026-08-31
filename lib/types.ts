@@ -16,6 +16,12 @@ export interface WPMedia {
 	media_details?: {
 		width: number;
 		height: number;
+		// Le varianti generate da WordPress (thumbnail, medium, large, ecc.).
+		// Servono perche' su questo sito, per molte immagini piu' vecchie, il
+		// file "full" originale e' stato cancellato dal server nel tempo (resta
+		// solo su disco una risoluzione ridotta): usare "full" alla cieca da'
+		// 404. Le dimensioni generate da WP restano invece quasi sempre intatte.
+		sizes?: Record<string, { source_url: string; width: number; height: number }>;
 	};
 }
 

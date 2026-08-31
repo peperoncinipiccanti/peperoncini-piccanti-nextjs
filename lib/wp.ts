@@ -1,4 +1,4 @@
-import type { Post, WPCategory, WPPost } from './types';
+import type { Post, WPCategory, WPMedia, WPPost } from './types';
 
 const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
 
@@ -45,10 +45,10 @@ async function wpFetchWithHeaders<T>(
 }
 
 /**
- * Questo sito NON usa il campo nativo "Immagine in evidenza" di WordPress
- * (tutti i post hanno `featured_media: 0`): le immagini sono inserite a mano
- * dentro al corpo dell'articolo (`content.rendered`), tipicamente come primo
- * `<img>` avvolto in un link al lightbox. Quando manca l'embed di
+ * Non tutti i post di questo sito hanno un'"Immagine in evidenza" nativa di
+ * WordPress: su alcuni (soprattutto i piu' vecchi) le foto sono inserite a
+ * mano dentro al corpo dell'articolo (`content.rendered`), tipicamente come
+ * primo `<img>` avvolto in un link al lightbox. Quando manca l'embed di
  * `wp:featuredmedia` si estrae quindi la prima immagine dall'HTML del
  * contenuto, cosi' PostCard e HeroCarousel hanno comunque un'immagine da
  * mostrare invece di renderizzare il nulla.
@@ -74,6 +74,31 @@ function extractFirstImageFromContent(html: string): { url: string; alt: string;
 	};
 }
 
+/**
+ * Sceglie l'URL migliore per un'immagine in evidenza: su questo sito, per
+ * molte foto caricate anni fa, il file "full" a piena risoluzione non esiste
+ * piu' sul server (restano solo le varianti ridimensionate generate da WP),
+ * quindi usare sempre `source_url` (che punta al "full") produce 404 a
+ * ripetizione. Si preferisce percio' una dimensione generata di poco inferiore
+ * a 1024px, gia' presente in quasi tutte le media library WP e piu' adatta
+ * per card/hero rispetto a un originale non ottimizzato; solo se manca anche
+ * quella si torna a `source_url`.
+ */
+function pickBestMediaUrl(media: WPMedia): { url: string; width: number; height: number } {
+	const sizes = media.media_details?.sizes;
+	const preferred = sizes?.large ?? sizes?.medium_large ?? sizes?.medium;
+
+	if (preferred) {
+		return { url: preferred.source_url, width: preferred.width, height: preferred.height };
+	}
+
+	return {
+		url: media.source_url,
+		width: media.media_details?.width ?? 1200,
+		height: media.media_details?.height ?? 900,
+	};
+}
+
 function normalizePost(raw: WPPost): Post {
 	const media = raw._embedded?.['wp:featuredmedia']?.[0];
 	const author = raw._embedded?.author?.[0];
@@ -82,6 +107,7 @@ function normalizePost(raw: WPPost): Post {
 	const rating = ratingRaw === undefined || ratingRaw === '' ? null : Number(ratingRaw);
 
 	const contentImage = media ? null : extractFirstImageFromContent(raw.content.rendered);
+	const bestMedia = media ? pickBestMediaUrl(media) : null;
 
 	return {
 		id: raw.id,
@@ -92,12 +118,12 @@ function normalizePost(raw: WPPost): Post {
 		excerpt: raw.excerpt.rendered,
 		content: raw.content.rendered,
 		rating: rating === null || Number.isNaN(rating) ? null : rating,
-		featuredImage: media
+		featuredImage: media && bestMedia
 			? {
-					url: media.source_url,
+					url: bestMedia.url,
 					alt: media.alt_text || raw.title.rendered,
-					width: media.media_details?.width ?? 1200,
-					height: media.media_details?.height ?? 900,
+					width: bestMedia.width,
+					height: bestMedia.height,
 				}
 			: contentImage
 				? {
