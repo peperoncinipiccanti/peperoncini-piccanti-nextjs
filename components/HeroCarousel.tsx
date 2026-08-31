@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Post } from '@/lib/types';
+import { timeAgo } from '@/lib/format';
 import { RatingBadge } from './RatingBadge';
 
 /**
@@ -100,6 +101,34 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 						<ChevronRight size={22} />
 					</button>
 				</div>
+			)}
+
+			{/*
+			 * Striscia "altri featured" del vecchio tema Edition: sotto l'hero
+			 * mostrava sempre TUTTI i titoli in evidenza (con link diretto e
+			 * "N ANNI AGO"), non solo quelli diversi dallo slide corrente —
+			 * verificato dal vivo avanzando lo slider: la lista non cambiava.
+			 * Qui si riproduce lo stesso elenco fisso, testo bianco per
+			 * leggibilità su sfondo scuro, separatori verticali tra gli item.
+			 */}
+			{posts.length > 1 && (
+				<ul className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-notte px-6 py-4 sm:px-10 sm:py-5">
+					{posts.map((post, i) => (
+						<li key={post.id} className="flex items-center gap-6">
+							<Link href={`/${post.slug}`} className="group/item flex flex-col gap-0.5">
+								<span className="max-w-[16rem] truncate text-sm font-bold uppercase tracking-wide text-white transition group-hover/item:text-teal sm:text-base">
+									{post.title}
+								</span>
+								<span className="text-[0.7rem] font-semibold uppercase tracking-wide text-white/60">
+									{timeAgo(post.date)}
+								</span>
+							</Link>
+							{i < posts.length - 1 && (
+								<span className="hidden h-8 w-px bg-white/20 sm:block" aria-hidden="true" />
+							)}
+						</li>
+					))}
+				</ul>
 			)}
 		</section>
 	);
