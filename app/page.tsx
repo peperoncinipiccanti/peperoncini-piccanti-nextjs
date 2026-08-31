@@ -37,14 +37,21 @@ export default async function HomePage() {
 	// live quella specifica foto e' pero' rotta (stesso problema noto dei
 	// file "full" cancellati dal server, vedi pickBestMediaUrl), quindi li'
 	// si vede solo il grigio piatto dell'overlay senza immagine sotto: non e'
-	// il design voluto, e' un bug preesistente. Qui si usa percio' la foto in
-	// evidenza dell'articolo piu' recente della categoria "Coltivare il
-	// Peperoncino" (stesso slug del menu) invece di riprodurre il bug.
+	// il design voluto, e' un bug preesistente.
+	//
+	// Si tenta prima la foto dell'articolo piu' recente della categoria
+	// "Coltivare il Peperoncino" (stesso slug del menu); se quello slug non
+	// corrisponde a una categoria reale o e' senza articoli con immagine (da
+	// verificare quando il sito WP non e' sotto protezione traffico, per non
+	// fare ulteriori richieste ora), si ripiega sulla prima foto gia' in
+	// memoria dal widget "recensioni" (piante di peperoncino) — zero
+	// richieste aggiuntive al WordPress, il banner non resta mai a tinta
+	// unita se una foto e' comunque disponibile.
 	const coltivareCategory = await getCategoryBySlug('come-coltivare-peperoncino');
 	const { posts: coltivarePosts } = coltivareCategory
 		? await getPosts({ perPage: 1, categoryId: coltivareCategory.id })
 		: { posts: [] };
-	const ctaImage = coltivarePosts[0]?.featuredImage ?? null;
+	const ctaImage = coltivarePosts[0]?.featuredImage ?? reviews[0]?.featuredImage ?? null;
 
 	const recipesCategory = await getCategoryBySlug('ricette-peperoncino-piccante');
 	const { posts: recipes } = recipesCategory
