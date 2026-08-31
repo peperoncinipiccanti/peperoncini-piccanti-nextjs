@@ -19,25 +19,37 @@
 	--font-sans: var(--font-lato), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-body {
-	color: var(--color-testo-secondario);
-	background: var(--color-base);
-}
+/*
+ * IMPORTANTE: gli stili di base vanno dentro @layer base. Tailwind v4 mette
+ * le utility (es. `text-white`) nel layer "utilities", che nella cascata dei
+ * CSS layer ha SEMPRE precedenza sul CSS "non layerizzato" — indipendentemente
+ * da specificita' e ordine nel file. Un `h2 { color: ... }` scritto fuori da
+ * un layer batteva quindi silenziosamente ogni `text-white` messo su un
+ * titolo (es. HeroCarousel/PostCard sopra le immagini), rendendo i titoli
+ * scuri invece che bianchi. Bug scoperto verificando dal vivo la nuova
+ * striscia titoli dell'hero.
+ */
+@layer base {
+	body {
+		color: var(--color-testo-secondario);
+		background: var(--color-base);
+	}
 
-h1, h2, h3, h4, h5, h6 {
-	color: var(--color-testo);
-	font-weight: 900;
-	text-transform: uppercase;
-	letter-spacing: 0.01em;
-	line-height: 1.15;
-}
+	h1, h2, h3, h4, h5, h6 {
+		color: var(--color-testo);
+		font-weight: 900;
+		text-transform: uppercase;
+		letter-spacing: 0.01em;
+		line-height: 1.15;
+	}
 
-a {
-	color: var(--color-teal);
-}
+	a {
+		color: var(--color-teal);
+	}
 
-a:hover {
-	color: var(--color-corallo);
+	a:hover {
+		color: var(--color-corallo);
+	}
 }
 
 /* ---------- Badge piccantezza: stesso anello CSS puro del tema WordPress ---------- */
