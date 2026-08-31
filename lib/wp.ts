@@ -118,6 +118,8 @@ function normalizePost(raw: WPPost): Post {
 		excerpt: raw.excerpt.rendered,
 		content: raw.content.rendered,
 		rating: rating === null || Number.isNaN(rating) ? null : rating,
+		featured: raw.is_featured === true,
+		menuOrder: raw.pphc_menu_order ?? 0,
 		featuredImage: media && bestMedia
 			? {
 					url: bestMedia.url,
@@ -185,6 +187,44 @@ export async function getPosts(
 	});
 
 	return { posts: data.map(normalizePost), totalPages, total };
+}
+
+/**
+ * Articoli per lo slider hero in home: nel backoffice WordPress (tema
+ * Edition) l'editor sceglie a mano quali post mostrare qui tramite il
+ * metabox "Featured" (Si/No) sul singolo articolo, e ne stabilisce l'ordine
+ * trascinandoli nella pagina admin "Featured Order" — non e' quindi un
+ * criterio automatico (es. "i piu' recenti"), ma una scelta editoriale
+ * esplicita, esposta in REST dal plugin companion (`is_featured`,
+ * `pphc_menu_order`, vedi wp-plugin/peperoncini-headless-companion.php).
+ *
+ * La REST API di WordPress non permette di filtrare per un campo custom
+ * come `is_featured` direttamente nella query (non e' un meta_query
+ * standard): si scorre quindi tutto il catalogo (paginato, 139 articoli in
+ * questo sito non sono un problema) e si filtra lato server Next.js. Se per
+ * qualche motivo nessun articolo risulta featured (es. plugin companion non
+ * ancora aggiornato sul WordPress live), si torna agli ultimi pubblicati
+ * cosi' l'hero non resta vuoto.
+ */
+export async function getFeaturedPosts(limit = 4): Promise<Post[]> {
+	const perPage = 100;
+	let page = 1;
+	let all: Post[] = [];
+
+	while (true) {
+		const { posts, totalPages } = await getPosts({ perPage, page });
+		all = all.concat(posts);
+		if (page >= totalPages) break;
+		page += 1;
+	}
+
+	const featured = all.filter((post) => post.featured).sort((a, b) => a.menuOrder - b.menuOrder);
+
+	if (featured.length === 0) {
+		return all.slice(0, limit);
+	}
+
+	return featured.slice(0, limit);
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {

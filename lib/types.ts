@@ -57,6 +57,9 @@ export interface WPPost {
 	meta?: {
 		piccantezza?: number | string;
 	};
+	/** Aggiunti dal plugin companion (register_rest_field): vedi wp-plugin/peperoncini-headless-companion.php */
+	is_featured?: boolean;
+	pphc_menu_order?: number;
 	_embedded?: {
 		author?: WPAuthor[];
 		'wp:featuredmedia'?: WPMedia[];
@@ -82,6 +85,10 @@ export interface Post {
 	excerpt: string;
 	content: string;
 	rating: number | null;
+	/** true se marcato "Featured" nel backoffice WP (vedi Post Settings / Featured Order del tema Edition). */
+	featured: boolean;
+	/** Ordine manuale scelto in "Featured Order"; usato solo per ordinare i post con featured=true. */
+	menuOrder: number;
 	featuredImage: { url: string; alt: string; width: number; height: number } | null;
 	categories: { id: number; name: string; slug: string }[];
 	tags: { id: number; name: string; slug: string }[];

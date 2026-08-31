@@ -1,11 +1,14 @@
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PostCard } from '@/components/PostCard';
-import { getCategoryBySlug, getPosts } from '@/lib/wp';
+import { getCategoryBySlug, getFeaturedPosts, getPosts } from '@/lib/wp';
 
 export default async function HomePage() {
-	// I 4 piu' recenti finiscono nel carosello hero; il resto della home
-	// li esclude via `exclude` cosi' nessun articolo compare due volte.
-	const { posts: heroPosts } = await getPosts({ perPage: 4 });
+	// Il carosello hero mostra gli articoli scelti a mano come "Featured" nel
+	// backoffice WordPress (metabox "Featured" + ordine da "Featured Order"),
+	// non semplicemente i piu' recenti — vedi getFeaturedPosts() in lib/wp.ts.
+	// Il resto della home li esclude via `exclude` cosi' nessun articolo
+	// compare due volte.
+	const heroPosts = await getFeaturedPosts(4);
 	const heroIds = heroPosts.map((p) => p.id);
 
 	const { posts: featured } = await getPosts({ perPage: 6, exclude: heroIds });

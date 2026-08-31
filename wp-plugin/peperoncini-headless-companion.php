@@ -75,6 +75,57 @@ add_action( 'save_post', 'pphc_save_rating_meta_box' );
 
 /**
  * ------------------------------------------------------------------
+ * Slider "in evidenza" (hero) — nel tema Edition esiste gia' un metabox
+ * "Featured" (campo ACF radio Yes/No, registrato via PHP nel tema, per
+ * questo non compare tra i gruppi di campi di ACF ne' in REST di default)
+ * usato insieme alla pagina admin "Featured Order" per scegliere a mano
+ * quali articoli mostrare nello slider e in che ordine (drag&drop, salvato
+ * come `menu_order` sul post). Qui si espone in REST solo il RISULTATO di
+ * quella scelta editoriale — non si duplica il metabox — cosi' il frontend
+ * Next.js puo' leggerlo senza reimplementare la logica del tema:
+ *   - "is_featured": true/false, letto con get_field() se ACF e' attivo;
+ *   - "pphc_menu_order": l'ordine scelto in "Featured Order".
+ * ------------------------------------------------------------------
+ */
+function pphc_register_featured_fields() {
+	register_rest_field(
+		'post',
+		'is_featured',
+		array(
+			'get_callback' => function ( $post ) {
+				if ( function_exists( 'get_field' ) ) {
+					$value = get_field( 'featured', $post['id'] );
+					return true === $value || '1' === $value || 'Yes' === $value;
+				}
+				return false;
+			},
+			'schema'       => array(
+				'description' => __( 'Se l\'articolo e\' marcato "Featured" nel backoffice (usato per lo slider hero).', 'peperoncini-headless' ),
+				'type'        => 'boolean',
+				'context'     => array( 'view' ),
+			),
+		)
+	);
+
+	register_rest_field(
+		'post',
+		'pphc_menu_order',
+		array(
+			'get_callback' => function ( $post ) {
+				return (int) get_post_field( 'menu_order', $post['id'] );
+			},
+			'schema'       => array(
+				'description' => __( 'Ordine manuale (drag&drop) scelto in "Featured Order" nel backoffice.', 'peperoncini-headless' ),
+				'type'        => 'integer',
+				'context'     => array( 'view' ),
+			),
+		)
+	);
+}
+add_action( 'rest_api_init', 'pphc_register_featured_fields' );
+
+/**
+ * ------------------------------------------------------------------
  * CORS per la REST API — necessario SOLO se in futuro il frontend Next.js
  * fara' chiamate dirette dal browser a questa REST API (es. una ricerca
  * "live" o un form). Il fetch dei contenuti che genera le pagine avviene
