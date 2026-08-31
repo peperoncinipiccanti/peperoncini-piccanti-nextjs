@@ -47,7 +47,14 @@ export default async function HomePage() {
 							<PostCard post={reviewFeatured} size="large" priority />
 						</div>
 					)}
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+					{/*
+					 * 2 per riga anche da lg in su: essendo questa colonna solo
+					 * 2/3 della larghezza pagina, 4 per riga (come nella griglia
+					 * "Ricette piccanti" sotto, che occupa tutta la larghezza)
+					 * rendeva le card troppo strette — titolo sovrapposto e foto
+					 * schiacciata.
+					 */}
+					<div className="grid grid-cols-2 gap-6">
 						{reviewRest.map((post) => (
 							<PostCard key={post.id} post={post} />
 						))}
