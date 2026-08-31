@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PostCard } from '@/components/PostCard';
 import { RecentComments } from '@/components/RecentComments';
@@ -48,6 +49,28 @@ export default async function HomePage() {
 				</div>
 
 				<RecentComments comments={recentComments} />
+			</section>
+
+			{/*
+			 * Banner "Vuoi imparare a coltivare in casa il peperoncino?" del
+			 * vecchio tema: blocco a tutta larghezza tra il widget recensioni
+			 * e "Ricette piccanti", link fisso alla guida (stesso slug usato nel
+			 * menu, vedi getMenu() in lib/wp.ts) — testo statico del tema, non
+			 * arriva da WordPress.
+			 */}
+			<section className="bg-notte py-16 text-center text-white">
+				<div className="mx-auto max-w-2xl px-4">
+					<h2 className="text-2xl uppercase text-white sm:text-3xl">
+						Vuoi imparare come coltivare in casa il peperoncino?
+					</h2>
+					<p className="mt-3 text-white/70">Segui i miei consigli. Pochi, facili ed efficaci!</p>
+					<Link
+						href="/come-coltivare-peperoncino"
+						className="mt-7 inline-flex items-center border border-white px-6 py-3 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-white hover:text-notte"
+					>
+						Scopri qui come fare
+					</Link>
+				</div>
 			</section>
 
 			{recipes.length > 0 && (
