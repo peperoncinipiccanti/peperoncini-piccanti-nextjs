@@ -1,28 +1,23 @@
 import type { MetadataRoute } from 'next';
-import { getAllCategories, getPosts } from '@/lib/wp';
+import { getAllCategories, getAllPostSlugs } from '@/lib/wp';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.peperoncinipiccanti.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const entries: MetadataRoute.Sitemap = [{ url: siteUrl, changeFrequency: 'daily', priority: 1 }];
 
-	// Scorre tutte le pagine della REST API (100 alla volta) per includere
-	// l'intero archivio, non solo gli ultimi articoli.
-	let page = 1;
-	let totalPages = 1;
-	do {
-		const result = await getPosts({ page, perPage: 100 });
-		totalPages = result.totalPages;
-		for (const post of result.posts) {
-			entries.push({
-				url: `${siteUrl}/${post.slug}`,
-				lastModified: post.date,
-				changeFrequency: 'monthly',
-				priority: 0.8,
-			});
-		}
-		page += 1;
-	} while (page <= totalPages);
+	// getAllPostSlugs() (non getPosts()): la sitemap non ha bisogno di foto,
+	// autore o tassonomie di ogni articolo, solo slug e data — vedi il
+	// commento su getAllPostSlugs() in lib/wp.ts.
+	const posts = await getAllPostSlugs();
+	for (const post of posts) {
+		entries.push({
+			url: `${siteUrl}/${post.slug}`,
+			lastModified: post.date,
+			changeFrequency: 'monthly',
+			priority: 0.8,
+		});
+	}
 
 	const categories = await getAllCategories();
 	for (const category of categories) {

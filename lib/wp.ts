@@ -201,6 +201,50 @@ export async function getPosts(
 }
 
 /**
+ * Elenco leggero (solo id + flag "featured" + ordine) di TUTTO il catalogo,
+ * senza `_embed` e con `_fields` per limitare la risposta ai soli campi
+ * necessari a capire quali articoli sono "Featured" e in che ordine.
+ *
+ * Usato solo da getFeaturedPosts(): scorrere tutto il catalogo con l'embed
+ * completo (foto, autore, tassonomie di OGNI articolo) per poi tenerne solo
+ * 4 produceva su questo sito una risposta oltre i 9MB per pagina — sopra il
+ * limite di 2MB per voce della cache dati di Next.js, che quindi smetteva
+ * di mettere in cache quella chiamata: ogni rigenerazione ISR doveva
+ * rifare da capo la stessa richiesta pesantissima a WordPress (visibile nei
+ * log di build Vercel come "Failed to set Next.js data cache ... items over
+ * 2MB can not be cached"). Con _fields la stessa scansione pesa poche decine
+ * di KB in totale.
+ */
+async function getFeaturedPostRefs(): Promise<{ id: number; menuOrder: number }[]> {
+	const perPage = 100;
+	let page = 1;
+	const refs: { id: number; menuOrder: number }[] = [];
+
+	while (true) {
+		const params = new URLSearchParams({
+			page: String(page),
+			per_page: String(perPage),
+			_fields: 'id,is_featured,pphc_menu_order',
+		});
+
+		const { data, totalPages } = await wpFetchWithHeaders<
+			{ id: number; is_featured?: boolean; pphc_menu_order?: number }[]
+		>(`/posts?${params.toString()}`, { tags: ['posts'] });
+
+		for (const raw of data) {
+			if (raw.is_featured) {
+				refs.push({ id: raw.id, menuOrder: raw.pphc_menu_order ?? 0 });
+			}
+		}
+
+		if (page >= totalPages) break;
+		page += 1;
+	}
+
+	return refs;
+}
+
+/**
  * Articoli per lo slider hero in home: nel backoffice WordPress (tema
  * Edition) l'editor sceglie a mano quali post mostrare qui tramite il
  * metabox "Featured" (Si/No) sul singolo articolo, e ne stabilisce l'ordine
@@ -211,31 +255,36 @@ export async function getPosts(
  *
  * La REST API di WordPress non permette di filtrare per un campo custom
  * come `is_featured` direttamente nella query (non e' un meta_query
- * standard): si scorre quindi tutto il catalogo (paginato, 139 articoli in
- * questo sito non sono un problema) e si filtra lato server Next.js. Se per
- * qualche motivo nessun articolo risulta featured (es. plugin companion non
- * ancora aggiornato sul WordPress live), si torna agli ultimi pubblicati
- * cosi' l'hero non resta vuoto.
+ * standard), quindi si scorre prima tutto il catalogo in forma leggera
+ * (getFeaturedPostRefs, solo id/ordine) e SOLO DOPO si richiedono con
+ * `_embed=1` i pochi articoli realmente featured (via `include=`), invece
+ * di scaricare l'embed completo di tutti i 139 articoli per poi tenerne 4.
+ * Se per qualche motivo nessun articolo risulta featured (es. plugin
+ * companion non ancora aggiornato sul WordPress live), si torna agli
+ * ultimi pubblicati cosi' l'hero non resta vuoto.
  */
 export async function getFeaturedPosts(limit = 4): Promise<Post[]> {
-	const perPage = 100;
-	let page = 1;
-	let all: Post[] = [];
+	const refs = await getFeaturedPostRefs();
 
-	while (true) {
-		const { posts, totalPages } = await getPosts({ perPage, page });
-		all = all.concat(posts);
-		if (page >= totalPages) break;
-		page += 1;
+	if (refs.length === 0) {
+		const { posts } = await getPosts({ perPage: limit });
+		return posts;
 	}
 
-	const featured = all.filter((post) => post.featured).sort((a, b) => a.menuOrder - b.menuOrder);
+	const ids = refs
+		.sort((a, b) => a.menuOrder - b.menuOrder)
+		.slice(0, limit)
+		.map((ref) => ref.id);
 
-	if (featured.length === 0) {
-		return all.slice(0, limit);
-	}
+	const params = new URLSearchParams({
+		_embed: '1',
+		include: ids.join(','),
+		orderby: 'include',
+		per_page: String(ids.length),
+	});
 
-	return featured.slice(0, limit);
+	const posts = await wpFetch<WPPost[]>(`/posts?${params.toString()}`, { tags: ['posts'] });
+	return posts.map(normalizePost);
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
@@ -254,6 +303,39 @@ export async function getCategoryBySlug(slug: string): Promise<WPCategory | null
 
 export async function getAllCategories(): Promise<WPCategory[]> {
 	return wpFetch<WPCategory[]>('/categories?per_page=100&hide_empty=1', { tags: ['categories'] });
+}
+
+/**
+ * Slug + data di TUTTI gli articoli, per la sitemap (app/sitemap.ts): a
+ * differenza di getPosts(), niente `_embed` (la sitemap non ha bisogno di
+ * foto/autore/tassonomie) e `_fields` per limitare la risposta ai soli due
+ * campi che servono — stesso principio di getFeaturedPostRefs(), stesso
+ * motivo: senza, la scansione dell'intero catalogo superava il limite di
+ * 2MB per voce della cache dati di Next.js.
+ */
+export async function getAllPostSlugs(): Promise<{ slug: string; date: string }[]> {
+	const perPage = 100;
+	let page = 1;
+	let all: { slug: string; date: string }[] = [];
+
+	while (true) {
+		const params = new URLSearchParams({
+			page: String(page),
+			per_page: String(perPage),
+			_fields: 'slug,date',
+		});
+
+		const { data, totalPages } = await wpFetchWithHeaders<{ slug: string; date: string }[]>(
+			`/posts?${params.toString()}`,
+			{ tags: ['posts'] }
+		);
+
+		all = all.concat(data);
+		if (page >= totalPages) break;
+		page += 1;
+	}
+
+	return all;
 }
 
 /**
