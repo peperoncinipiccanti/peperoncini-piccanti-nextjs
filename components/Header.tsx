@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { FacebookIcon, InstagramIcon } from './icons';
 import { BreakingTicker } from './BreakingTicker';
+import { MobileMenu } from './MobileMenu';
 import { getTickerPosts } from '@/lib/wp';
 
 type MenuItem = { label: string; href: string };
@@ -40,7 +41,13 @@ export async function Header({ menu }: { menu: MenuItem[] }) {
 				</div>
 			</div>
 
-			<div className="flex flex-wrap items-center justify-between gap-4 border-b border-bordo px-4 py-4">
+			{/*
+			 * "relative" e' l'antenato posizionato a cui si aggancia il pannello
+			 * a tendina di MobileMenu (position: absolute), cosi' copre l'intera
+			 * larghezza dell'header invece che solo l'area del pulsante — vedi
+			 * il commento in MobileMenu.tsx.
+			 */}
+			<div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-bordo px-4 py-4">
 				<Link href="/" className="shrink-0">
 					{/* Logo reale caricato nella libreria media di WordPress: sfondo bianco
 					    nel file sorgente, per questo il contenitore ha uno sfondo bianco
@@ -56,7 +63,12 @@ export async function Header({ menu }: { menu: MenuItem[] }) {
 					/>
 				</Link>
 
-				<nav aria-label="Menu principale">
+				{/*
+				 * Su mobile le voci per esteso non ci stanno (o vanno a capo): si
+				 * nasconde questa nav orizzontale sotto "sm" e si mostra invece
+				 * l'hamburger di MobileMenu, che apre le stesse voci in verticale.
+				 */}
+				<nav aria-label="Menu principale" className="hidden sm:block">
 					<ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-bold uppercase tracking-wide">
 						{menu.map((item) => (
 							<li key={item.href}>
@@ -68,9 +80,12 @@ export async function Header({ menu }: { menu: MenuItem[] }) {
 					</ul>
 				</nav>
 
-				<Link href="/cerca" aria-label="Cerca" className="text-testo hover:text-teal">
-					<Search size={20} />
-				</Link>
+				<div className="flex items-center gap-3">
+					<MobileMenu menu={menu} />
+					<Link href="/cerca" aria-label="Cerca" className="text-testo hover:text-teal">
+						<Search size={20} />
+					</Link>
+				</div>
 			</div>
 		</header>
 	);
