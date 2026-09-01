@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
-import { getCategoryBySlug, getPostBySlug, getPosts } from '@/lib/wp';
+import { PopularPostsWidget } from '@/components/PopularPostsWidget';
+import { ViewTracker } from '@/components/ViewTracker';
+import { getCategoryBySlug, getPopularPosts, getPostBySlug, getPosts } from '@/lib/wp';
 
 type Props = {
 	params: Promise<{ slug: string[] }>;
@@ -67,7 +69,12 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 	const category = await getCategoryBySlug(target);
 	if (category) {
 		const page = Math.max(1, Number(pagina) || 1);
-		const { posts, totalPages } = await getPosts({ categoryId: category.id, page, perPage: 9 });
+		// getPosts e getPopularPosts sono indipendenti: si eseguono insieme
+		// invece che in sequenza per non raddoppiare il tempo di risposta.
+		const [{ posts, totalPages }, popular] = await Promise.all([
+			getPosts({ categoryId: category.id, page, perPage: 9 }),
+			getPopularPosts(5),
+		]);
 
 		if (posts.length === 0 && page === 1) notFound();
 
@@ -76,13 +83,24 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 				<h1 className="text-3xl">{category.name}</h1>
 				{category.description && <p className="mt-2 max-w-2xl text-testo-secondario">{category.description}</p>}
 
-				<div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-					{posts.map((p) => (
-						<PostCard key={p.id} post={p} />
-					))}
-				</div>
+				{/*
+				 * Layout 2/3 + 1/3 del vecchio tema Edition per le pagine
+				 * categoria: articoli 2 per riga nella colonna larga, widget
+				 * "post più visti" (settimana/mese/sempre) nella colonna stretta.
+				 */}
+				<div className="mt-8 grid gap-10 lg:grid-cols-3">
+					<div className="lg:col-span-2">
+						<div className="grid gap-6 sm:grid-cols-2">
+							{posts.map((p) => (
+								<PostCard key={p.id} post={p} />
+							))}
+						</div>
 
-				<Pagination currentPage={page} totalPages={totalPages} basePath={`/${slug.join('/')}`} />
+						<Pagination currentPage={page} totalPages={totalPages} basePath={`/${slug.join('/')}`} />
+					</div>
+
+					<PopularPostsWidget weekly={popular.weekly} monthly={popular.monthly} allTime={popular.all_time} />
+				</div>
 			</main>
 		);
 	}
@@ -101,6 +119,7 @@ function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> })
 
 	return (
 		<main>
+			<ViewTracker postId={post.id} />
 			{post.featuredImage && (
 				<div className="relative isolate aspect-[21/9] w-full overflow-hidden">
 					<Image

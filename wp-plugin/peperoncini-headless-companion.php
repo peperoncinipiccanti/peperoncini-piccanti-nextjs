@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
- * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
+ * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
  * Version: 1.0.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
@@ -128,6 +128,218 @@ function pphc_register_featured_fields() {
 	);
 }
 add_action( 'rest_api_init', 'pphc_register_featured_fields' );
+
+/**
+ * ------------------------------------------------------------------
+ * Widget "I post piccanti piu' visti" (Week/Month/All Time) — nel tema
+ * originale i dati venivano dal plugin "WP Most Popular", che pero' conta le
+ * visite con uno script JS stampato in wp_head() delle pagine servite da
+ * WordPress stesso. Ora che le pagine vere le serve Next.js, quello script
+ * non gira mai piu': le visite si azzererebbero. Qui si replica lo STESSO
+ * schema di dati del plugin (tabella {prefix}most_popular, colonne
+ * 1_day_stats/7_day_stats/30_day_stats/all_time_stats) cosi' il widget resta
+ * compatibile se in futuro si riattiva il plugin originale, ma la lettura
+ * (GET /pphc/v1/popular) e la scrittura (POST /pphc/v1/track-view, chiamata
+ * dal browser del visitatore via lib/wp.ts + components/ViewTracker.tsx nel
+ * progetto Next.js) sono gestite direttamente da qui, senza dipendere da
+ * classi del plugin di terze parti che potrebbero non essere caricate.
+ * ------------------------------------------------------------------
+ */
+function pphc_most_popular_table() {
+	global $wpdb;
+	return $wpdb->prefix . 'most_popular';
+}
+
+function pphc_most_popular_table_exists() {
+	global $wpdb;
+	$table = pphc_most_popular_table();
+	return $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) === $table;
+}
+
+/**
+ * Crea la tabella se non esiste gia' (es. plugin "WP Most Popular" mai
+ * installato, o disattivato in futuro): cosi' il tracciamento visite del
+ * sito headless non dipende dal restare attivo quel plugin di terze parti.
+ * Sul sito attuale la tabella esiste gia', quindi questa funzione non tocca
+ * i dati esistenti.
+ */
+function pphc_ensure_most_popular_table() {
+	global $wpdb;
+	if ( pphc_most_popular_table_exists() ) {
+		return;
+	}
+
+	$table            = pphc_most_popular_table();
+	$charset_collate  = $wpdb->get_charset_collate();
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+	$sql = "CREATE TABLE {$table} (
+		id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		post_id BIGINT NOT NULL,
+		last_updated DATETIME NOT NULL,
+		`1_day_stats` MEDIUMINT NOT NULL,
+		`7_day_stats` MEDIUMINT NOT NULL,
+		`30_day_stats` MEDIUMINT NOT NULL,
+		all_time_stats BIGINT NOT NULL,
+		raw_stats TEXT NOT NULL
+	) {$charset_collate};";
+
+	dbDelta( $sql );
+}
+register_activation_hook( __FILE__, 'pphc_ensure_most_popular_table' );
+
+function pphc_register_popular_posts_routes() {
+	register_rest_route(
+		'pphc/v1',
+		'/popular',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'pphc_get_popular_posts',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'pphc/v1',
+		'/track-view',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'pphc_track_view',
+			'permission_callback' => '__return_true',
+		)
+	);
+}
+add_action( 'rest_api_init', 'pphc_register_popular_posts_routes' );
+
+function pphc_get_popular_posts( WP_REST_Request $request ) {
+	global $wpdb;
+
+	$empty = array(
+		'weekly'   => array(),
+		'monthly'  => array(),
+		'all_time' => array(),
+	);
+
+	if ( ! pphc_most_popular_table_exists() ) {
+		return $empty;
+	}
+
+	$table = pphc_most_popular_table();
+	$limit = (int) $request->get_param( 'limit' );
+	if ( $limit <= 0 ) {
+		$limit = 5;
+	}
+
+	// phpcs:ignore WordPress.DB.PreparedSQL -- $table e' costruito da $wpdb->prefix, nessun input utente.
+	$rows = $wpdb->get_results(
+		"
+		SELECT p.ID, mp.`7_day_stats` AS weekly, mp.`30_day_stats` AS monthly, mp.all_time_stats AS all_time
+		FROM {$table} mp
+		INNER JOIN {$wpdb->posts} p ON mp.post_id = p.ID
+		WHERE p.post_type = 'post' AND p.post_status = 'publish'
+		"
+	);
+
+	if ( ! $rows ) {
+		return $empty;
+	}
+
+	$format_post = function ( $row, $views ) {
+		$thumb_id = get_post_thumbnail_id( $row->ID );
+		return array(
+			'id'        => (int) $row->ID,
+			'title'     => html_entity_decode( get_the_title( $row->ID ), ENT_QUOTES ),
+			'slug'      => get_post_field( 'post_name', $row->ID ),
+			'link'      => get_permalink( $row->ID ),
+			'views'     => (int) $views,
+			'thumbnail' => $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'thumbnail' ) : null,
+		);
+	};
+
+	$build_range = function ( $field ) use ( $rows, $limit, $format_post ) {
+		$copy = $rows;
+		usort(
+			$copy,
+			function ( $a, $b ) use ( $field ) {
+				return $b->$field <=> $a->$field;
+			}
+		);
+		$copy = array_slice( $copy, 0, $limit );
+		return array_values(
+			array_map(
+				function ( $row ) use ( $field, $format_post ) {
+					return $format_post( $row, $row->$field );
+				},
+				$copy
+			)
+		);
+	};
+
+	return array(
+		'weekly'   => $build_range( 'weekly' ),
+		'monthly'  => $build_range( 'monthly' ),
+		'all_time' => $build_range( 'all_time' ),
+	);
+}
+
+function pphc_track_view( WP_REST_Request $request ) {
+	$post_id = (int) $request->get_param( 'postId' );
+
+	if ( ! $post_id || 'publish' !== get_post_status( $post_id ) ) {
+		return new WP_Error( 'pphc_invalid_post', 'Post non valido.', array( 'status' => 400 ) );
+	}
+
+	global $wpdb;
+	$table = pphc_most_popular_table();
+
+	if ( ! pphc_most_popular_table_exists() ) {
+		// Tabella non ancora creata (plugin "WP Most Popular" mai installato
+		// o disattivato): niente da tracciare, ma non e' un errore per il
+		// visitatore — si ritorna semplicemente "non tracciato".
+		return array( 'tracked' => false );
+	}
+
+	$date = gmdate( 'Y-m-d' );
+	$raw  = $wpdb->get_var( $wpdb->prepare( "SELECT raw_stats FROM {$table} WHERE post_id = %d", $post_id ) );
+
+	if ( null === $raw ) {
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$table} (post_id, last_updated, `1_day_stats`, `7_day_stats`, `30_day_stats`, all_time_stats, raw_stats) VALUES (%d, NOW(), 0, 0, 0, 0, '')",
+				$post_id
+			)
+		);
+		$stats = array();
+	} else {
+		$stats = $raw ? (array) unserialize( $raw ) : array();
+	}
+
+	$stats[ $date ] = isset( $stats[ $date ] ) ? $stats[ $date ] + 1 : 1;
+
+	$sum_last_days = function ( $days ) use ( $stats ) {
+		$total = 0;
+		for ( $i = 0; $i < $days; $i++ ) {
+			$day = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
+			if ( isset( $stats[ $day ] ) ) {
+				$total += $stats[ $day ];
+			}
+		}
+		return $total;
+	};
+
+	$wpdb->query(
+		$wpdb->prepare(
+			"UPDATE {$table} SET `1_day_stats` = %d, `7_day_stats` = %d, `30_day_stats` = %d, all_time_stats = all_time_stats + 1, last_updated = NOW(), raw_stats = %s WHERE post_id = %d",
+			$sum_last_days( 1 ),
+			$sum_last_days( 7 ),
+			$sum_last_days( 30 ),
+			serialize( $stats ),
+			$post_id
+		)
+	);
+
+	return array( 'tracked' => true );
+}
 
 /**
  * ------------------------------------------------------------------

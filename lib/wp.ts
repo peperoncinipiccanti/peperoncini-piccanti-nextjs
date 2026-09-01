@@ -1,4 +1,4 @@
-import type { Post, RecentComment, WPCategory, WPComment, WPMedia, WPPost } from './types';
+import type { Post, PopularPostsResponse, RecentComment, WPCategory, WPComment, WPMedia, WPPost } from './types';
 
 const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
 
@@ -293,6 +293,35 @@ export async function getRecentComments(limit = 7): Promise<RecentComment[]> {
 			.filter((comment) => comment.postTitle !== '');
 	} catch {
 		return [];
+	}
+}
+
+/**
+ * Widget "I post piccanti più visti" (sidebar delle pagine categoria):
+ * legge la route custom del plugin companion (/pphc/v1/popular), che a sua
+ * volta legge la stessa tabella dati del plugin "WP Most Popular" gia'
+ * installato sul sito — non e' quindi sotto il namespace standard wp/v2,
+ * per cui non si puo' riusare wpFetch() (ha /wp-json/wp/v2 hardcoded).
+ *
+ * Il conteggio viste riparte da zero da quando il sito e' diventato
+ * headless (lo script di tracking del vecchio plugin funzionava solo sulle
+ * pagine renderizzate da WordPress, che ora non servono piu' traffico
+ * reale): i numeri iniziano ad accumularsi da capo grazie a ViewTracker.
+ *
+ * Se la route non esiste ancora sul WordPress live (plugin non ancora
+ * aggiornato) o il sito risponde con un errore, si torna tre liste vuote
+ * cosi' il widget semplicemente non si mostra invece di rompere la pagina.
+ */
+export async function getPopularPosts(limit = 5): Promise<PopularPostsResponse> {
+	const empty: PopularPostsResponse = { weekly: [], monthly: [], all_time: [] };
+	try {
+		const res = await fetch(`${WP_API_URL}/wp-json/pphc/v1/popular?limit=${limit}`, {
+			next: { revalidate: 3600, tags: ['wp', 'popular'] },
+		});
+		if (!res.ok) return empty;
+		return (await res.json()) as PopularPostsResponse;
+	} catch {
+		return empty;
 	}
 }
 

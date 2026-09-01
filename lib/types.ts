@@ -108,6 +108,28 @@ export interface RecentComment {
 	href: string;
 }
 
+/**
+ * Un post nella classifica "post piu' visti" (widget sidebar delle pagine
+ * categoria). Arriva gia' pronto dalla route custom del plugin companion
+ * (/pphc/v1/popular), che legge la stessa tabella dati del plugin "WP Most
+ * Popular" gia' installato — vedi wp-plugin/peperoncini-headless-companion.php.
+ */
+export interface PopularPost {
+	id: number;
+	title: string;
+	slug: string;
+	link: string;
+	views: number;
+	thumbnail: string | null;
+}
+
+/** Risposta di /pphc/v1/popular: tre classifiche gia' ordinate e tagliate a `limit`. */
+export interface PopularPostsResponse {
+	weekly: PopularPost[];
+	monthly: PopularPost[];
+	all_time: PopularPost[];
+}
+
 /** Forma "pulita" usata dai componenti, dopo la normalizzazione in lib/wp.ts. */
 export interface Post {
 	id: number;
