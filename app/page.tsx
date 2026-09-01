@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { AboutSection } from '@/components/AboutSection';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PreserveCarousel } from '@/components/PreserveCarousel';
 import { RecentComments } from '@/components/RecentComments';
@@ -127,6 +128,8 @@ export default async function HomePage() {
 					<PreserveCarousel posts={preservePosts} />
 				</section>
 			)}
+
+			<AboutSection />
 		</main>
 	);
 }
