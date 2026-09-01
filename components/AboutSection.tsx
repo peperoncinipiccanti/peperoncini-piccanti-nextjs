@@ -1,8 +1,16 @@
+import Image from 'next/image';
+
 /**
  * Blocco "presentazione" della vecchia home (manifesto del blog + bio
  * dell'autore): testo statico fornito direttamente da Daniele, non arriva
  * da WordPress — stesso principio gia' usato per il banner "Vuoi imparare
  * come coltivare in casa il peperoncino?" in app/page.tsx.
+ *
+ * Le due foto di chiusura (peperoncini e Zen, il cane citato nel testo)
+ * sono asset statici del progetto (public/about/), gia' ridimensionati e
+ * compressi in JPEG — non passano dalla libreria media di WordPress perche'
+ * non sono contenuto editoriale gestito da CMS, ma parte fissa di questa
+ * sezione "Chi sono".
  */
 export function AboutSection() {
 	return (
@@ -56,6 +64,33 @@ export function AboutSection() {
 						se n&rsquo;è andato senza avermi mai perdonato il trasferimento&hellip;
 					</p>
 					<p>Non mi resta che augurarvi buona navigazione e più PeperonciniPiccanti per il futuro!</p>
+				</div>
+
+				<div className="mt-8 grid grid-cols-2 gap-4">
+					<figure>
+						<div className="relative aspect-square overflow-hidden">
+							<Image
+								src="/about/peperoncini.jpg"
+								alt="Peperoncini piccanti rossi, gialli e arancioni appena raccolti"
+								width={1200}
+								height={1200}
+								sizes="(min-width: 640px) 340px, 45vw"
+								className="h-full w-full object-cover"
+							/>
+						</div>
+					</figure>
+					<figure>
+						<div className="relative aspect-square overflow-hidden">
+							<Image
+								src="/about/zen.jpg"
+								alt="Zen, il Bobtail nuvola di pelo, in giardino con un pallone"
+								width={900}
+								height={1200}
+								sizes="(min-width: 640px) 340px, 45vw"
+								className="h-full w-full object-cover"
+							/>
+						</div>
+					</figure>
 				</div>
 			</div>
 		</section>
