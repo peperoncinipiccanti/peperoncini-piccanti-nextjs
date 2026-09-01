@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
 import { PopularPostsWidget } from '@/components/PopularPostsWidget';
 import { ViewTracker } from '@/components/ViewTracker';
-import { getCategoryBySlug, getPopularPosts, getPostBySlug, getPosts } from '@/lib/wp';
+import { getCategoryBySlug, getPopularPosts, getPostBySlug, getPosts, getTagBySlug } from '@/lib/wp';
 
 type Props = {
 	params: Promise<{ slug: string[] }>;
@@ -53,6 +54,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 		return { title: category.name, description: category.description || undefined };
 	}
 
+	const tag = await getTagBySlug(lastSegment(slug));
+	if (tag) {
+		return { title: tag.name, description: tag.description || undefined };
+	}
+
 	return {};
 }
 
@@ -69,43 +75,82 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 	const category = await getCategoryBySlug(target);
 	if (category) {
 		const page = Math.max(1, Number(pagina) || 1);
-		// getPosts e getPopularPosts sono indipendenti: si eseguono insieme
-		// invece che in sequenza per non raddoppiare il tempo di risposta.
-		const [{ posts, totalPages }, popular] = await Promise.all([
-			getPosts({ categoryId: category.id, page, perPage: 9 }),
-			getPopularPosts(5),
-		]);
+		return ArchiveView({
+			title: category.name,
+			description: category.description || undefined,
+			postsQuery: { categoryId: category.id },
+			page,
+			basePath: `/${slug.join('/')}`,
+		});
+	}
 
-		if (posts.length === 0 && page === 1) notFound();
-
-		return (
-			<main className="mx-auto max-w-6xl px-4 py-14">
-				<h1 className="text-3xl">{category.name}</h1>
-				{category.description && <p className="mt-2 max-w-2xl text-testo-secondario">{category.description}</p>}
-
-				{/*
-				 * Layout 2/3 + 1/3 del vecchio tema Edition per le pagine
-				 * categoria: articoli 2 per riga nella colonna larga, widget
-				 * "post più visti" (settimana/mese/sempre) nella colonna stretta.
-				 */}
-				<div className="mt-8 grid gap-10 lg:grid-cols-3">
-					<div className="lg:col-span-2">
-						<div className="grid gap-6 sm:grid-cols-2">
-							{posts.map((p) => (
-								<PostCard key={p.id} post={p} />
-							))}
-						</div>
-
-						<Pagination currentPage={page} totalPages={totalPages} basePath={`/${slug.join('/')}`} />
-					</div>
-
-					<PopularPostsWidget weekly={popular.weekly} monthly={popular.monthly} allTime={popular.all_time} />
-				</div>
-			</main>
-		);
+	// Pagina archivio di un tag (/tag/nome-tag/ nel vecchio tema): stesso
+	// layout 2/3 + 1/3 delle categorie, la corrispondenza avviene sempre
+	// sull'ultimo segmento del percorso, quindi il prefisso "/tag/" non deve
+	// essere gestito esplicitamente qui.
+	const tag = await getTagBySlug(target);
+	if (tag) {
+		const page = Math.max(1, Number(pagina) || 1);
+		return ArchiveView({
+			title: tag.name,
+			description: tag.description || undefined,
+			postsQuery: { tagId: tag.id },
+			page,
+			basePath: `/${slug.join('/')}`,
+		});
 	}
 
 	notFound();
+}
+
+/**
+ * Layout comune alle pagine archivio (categorie e tag): griglia 2/3 (2
+ * articoli per riga) + sidebar 1/3 col widget "post più visti", come nel
+ * vecchio tema Edition. Estratta in una funzione condivisa per non
+ * duplicare lo stesso JSX tra i due rami (categoria/tag) di CatchAllPage.
+ */
+async function ArchiveView({
+	title,
+	description,
+	postsQuery,
+	page,
+	basePath,
+}: {
+	title: string;
+	description?: string;
+	postsQuery: { categoryId?: number; tagId?: number };
+	page: number;
+	basePath: string;
+}) {
+	// getPosts e getPopularPosts sono indipendenti: si eseguono insieme
+	// invece che in sequenza per non raddoppiare il tempo di risposta.
+	const [{ posts, totalPages }, popular] = await Promise.all([
+		getPosts({ ...postsQuery, page, perPage: 9 }),
+		getPopularPosts(5),
+	]);
+
+	if (posts.length === 0 && page === 1) notFound();
+
+	return (
+		<main className="mx-auto max-w-6xl px-4 py-14">
+			<h1 className="text-3xl">{title}</h1>
+			{description && <p className="mt-2 max-w-2xl text-testo-secondario">{description}</p>}
+
+			<div className="mt-8 grid gap-10 lg:grid-cols-3">
+				<div className="lg:col-span-2">
+					<div className="grid gap-6 sm:grid-cols-2">
+						{posts.map((p) => (
+							<PostCard key={p.id} post={p} />
+						))}
+					</div>
+
+					<Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
+				</div>
+
+				<PopularPostsWidget weekly={popular.weekly} monthly={popular.monthly} allTime={popular.all_time} />
+			</div>
+		</main>
+	);
 }
 
 function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> }) {
@@ -172,7 +217,11 @@ function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> })
 				{post.tags.length > 0 && (
 					<ul className="mt-8 flex flex-wrap gap-2 border-t border-bordo pt-6 text-xs text-testo-secondario">
 						{post.tags.map((tag) => (
-							<li key={tag.id}>#{tag.name}</li>
+							<li key={tag.id}>
+								<Link href={`/tag/${tag.slug}`} className="transition hover:text-teal">
+									#{tag.name}
+								</Link>
+							</li>
 						))}
 					</ul>
 				)}

@@ -160,6 +160,7 @@ export async function getPosts(
 		page = 1,
 		perPage = 9,
 		categoryId,
+		tagId,
 		exclude,
 		offset,
 		search,
@@ -167,6 +168,7 @@ export async function getPosts(
 		page?: number;
 		perPage?: number;
 		categoryId?: number;
+		tagId?: number;
 		exclude?: number[];
 		offset?: number;
 		search?: string;
@@ -180,6 +182,7 @@ export async function getPosts(
 		order: 'desc',
 	});
 	if (categoryId) params.set('categories', String(categoryId));
+	if (tagId) params.set('tags', String(tagId));
 	if (exclude?.length) params.set('exclude', exclude.join(','));
 	if (offset) params.set('offset', String(offset));
 	if (search) params.set('search', search);
@@ -245,6 +248,19 @@ export async function getCategoryBySlug(slug: string): Promise<WPCategory | null
 
 export async function getAllCategories(): Promise<WPCategory[]> {
 	return wpFetch<WPCategory[]>('/categories?per_page=100&hide_empty=1', { tags: ['categories'] });
+}
+
+/**
+ * Pagina archivio di un tag (/tag/nome-tag/ nel vecchio tema): la risposta
+ * di /wp/v2/tags ha la stessa forma di /wp/v2/categories (id, name, slug,
+ * description, count), quindi si riusa lo stesso tipo WPCategory invece di
+ * duplicarlo.
+ */
+export async function getTagBySlug(slug: string): Promise<WPCategory | null> {
+	const tags = await wpFetch<WPCategory[]>(`/tags?slug=${encodeURIComponent(slug)}`, {
+		tags: ['tags'],
+	});
+	return tags[0] ?? null;
 }
 
 /**
