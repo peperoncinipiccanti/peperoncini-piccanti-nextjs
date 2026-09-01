@@ -31,6 +31,10 @@ export async function POST(request: NextRequest) {
 	// generata in background — nessuna attesa percepibile dall'utente).
 	revalidateTag('posts', 'max');
 	revalidateTag('categories', 'max');
+	// Invalida anche il widget "post più visti": legge le foto in evidenza
+	// correnti dei post, quindi va rinfrescato ad ogni salvataggio esattamente
+	// come le altre liste, non solo ogni ora.
+	revalidateTag('popular', 'max');
 	if (slug) revalidateTag(`post:${slug}`, 'max');
 
 	return NextResponse.json({ revalidated: true, slug: slug ?? null, now: Date.now() });
