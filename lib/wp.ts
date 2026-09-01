@@ -81,12 +81,18 @@ function extractFirstImageFromContent(html: string): { url: string; alt: string;
  * quindi usare sempre `source_url` (che punta al "full") produce 404 a
  * ripetizione. Si preferisce percio' una dimensione generata di poco inferiore
  * a 1024px, gia' presente in quasi tutte le media library WP e piu' adatta
- * per card/hero rispetto a un originale non ottimizzato; solo se manca anche
- * quella si torna a `source_url`.
+ * per card/hero rispetto a un originale non ottimizzato.
+ *
+ * Se invece e' una foto appena caricata per cui WordPress non ha ancora
+ * rigenerato tutte le dimensioni (capita quando si sostituisce un file:
+ * risolto in passato con "Rigenera miniature"), "large"/"medium_large"/
+ * "medium" possono mancare tutte — si aggiunge quindi "thumbnail" come
+ * ulteriore tentativo prima di arrivare a `source_url`, cosi' una sola
+ * dimensione mancante non fa piu' comparire un'icona rotta.
  */
 function pickBestMediaUrl(media: WPMedia): { url: string; width: number; height: number } {
 	const sizes = media.media_details?.sizes;
-	const preferred = sizes?.large ?? sizes?.medium_large ?? sizes?.medium;
+	const preferred = sizes?.large ?? sizes?.medium_large ?? sizes?.medium ?? sizes?.thumbnail;
 
 	if (preferred) {
 		return { url: preferred.source_url, width: preferred.width, height: preferred.height };
