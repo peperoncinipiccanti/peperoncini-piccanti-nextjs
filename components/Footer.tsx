@@ -23,7 +23,7 @@ export function Footer({ menu }: { menu: MenuItem[] }) {
 						<a href="https://www.pinterest.com/peperoncini" target="_blank" rel="noreferrer" aria-label="Pinterest">
 							<PinterestIcon size={18} />
 						</a>
-						<a href="https://www.twitter.com/peperoncinip" target="_blank" rel="noreferrer" aria-label="X (Twitter)">
+						<a href="https://x.com/peperoncinip" target="_blank" rel="noreferrer" aria-label="X (Twitter)">
 							<XIcon size={18} />
 						</a>
 					</div>
@@ -45,7 +45,8 @@ export function Footer({ menu }: { menu: MenuItem[] }) {
 				<div className="space-y-3">
 					<h4 className="text-lg font-black uppercase text-white">Cerca</h4>
 					<p className="text-sm text-white/70">
-						Cerchi una ricetta o una varietà in particolare?{' '}
+						Cerchi una ricetta o una varietà in particolare?
+						<br />
 						<Link href="/cerca" className="text-teal hover:text-corallo">
 							Usa la ricerca
 						</Link>
