@@ -403,16 +403,18 @@ add_filter( 'rest_authentication_errors', 'pphc_allow_cors_from_frontend' );
  *   define( 'PPHC_REVALIDATE_SECRET', 'lo-stesso-valore-di-REVALIDATE_SECRET-su-Vercel' );
  * ------------------------------------------------------------------
  */
-function pphc_notify_frontend( $post_id, $post, $update ) {
-	if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
-		return;
-	}
-	if ( 'post' !== $post->post_type || 'publish' !== $post->post_status ) {
-		return;
-	}
+/**
+ * Chiamata effettiva al webhook — estratta in una funzione a se' perche'
+ * va richiamata da DUE punti diversi (vedi sotto): il normale salvataggio
+ * dell'articolo, e il cambio della sola immagine in evidenza, che in
+ * WordPress e' un percorso separato e non passa da 'save_post'.
+ */
+function pphc_trigger_revalidation( $post_id ) {
 	if ( ! defined( 'PPHC_REVALIDATE_URL' ) || ! defined( 'PPHC_REVALIDATE_SECRET' ) ) {
 		return;
 	}
+
+	$slug = get_post_field( 'post_name', $post_id );
 
 	wp_remote_post(
 		PPHC_REVALIDATE_URL,
@@ -423,8 +425,44 @@ function pphc_notify_frontend( $post_id, $post, $update ) {
 				'Content-Type'          => 'application/json',
 				'x-revalidate-secret'   => PPHC_REVALIDATE_SECRET,
 			),
-			'body' => wp_json_encode( array( 'slug' => $post->post_name ) ),
+			'body' => wp_json_encode( array( 'slug' => $slug ) ),
 		)
 	);
 }
+
+function pphc_notify_frontend( $post_id, $post, $update ) {
+	if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+		return;
+	}
+	if ( 'post' !== $post->post_type || 'publish' !== $post->post_status ) {
+		return;
+	}
+
+	pphc_trigger_revalidation( $post_id );
+}
 add_action( 'save_post', 'pphc_notify_frontend', 20, 3 );
+
+/**
+ * Cambiare SOLO l'immagine in evidenza dal riquadro "Immagine in evidenza"
+ * (senza toccare altro nell'articolo) in WordPress non passa da 'save_post':
+ * e' una chiamata AJAX piu' leggera (set_post_thumbnail) che aggiorna
+ * direttamente il meta '_thumbnail_id'. Senza questo aggancio separato, il
+ * webhook di revalidazione non scattava mai in quel caso, e la nuova foto
+ * restava invisibile sul frontend fino alla scadenza naturale della cache
+ * (1 ora) — bug osservato sull'hero, dove capita spesso di cambiare solo
+ * la foto senza altre modifiche al post.
+ */
+function pphc_notify_frontend_on_thumbnail_change( $meta_id, $post_id, $meta_key, $meta_value ) {
+	if ( '_thumbnail_id' !== $meta_key ) {
+		return;
+	}
+
+	$post = get_post( $post_id );
+	if ( ! $post || 'post' !== $post->post_type || 'publish' !== $post->post_status ) {
+		return;
+	}
+
+	pphc_trigger_revalidation( $post_id );
+}
+add_action( 'updated_post_meta', 'pphc_notify_frontend_on_thumbnail_change', 10, 4 );
+add_action( 'added_post_meta', 'pphc_notify_frontend_on_thumbnail_change', 10, 4 );
