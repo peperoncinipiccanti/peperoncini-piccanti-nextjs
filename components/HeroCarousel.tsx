@@ -89,7 +89,17 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 
 						<div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-notte/90 via-notte/10 to-transparent" />
 
-						<div className="relative z-20 flex h-full flex-col justify-end gap-3 p-6 sm:p-10 lg:p-14">
+						{/*
+						 * "pointer-events-none": questo blocco (titolo, tag, pulsante)
+						 * si trova sopra il link che copre l'intera card (z-20 contro
+						 * z-10) — senza disattivare i suoi eventi di puntamento,
+						 * intercetta il click prima che raggiunga il link sottostante,
+						 * rendendo la card cliccabile solo nell'area vuota non coperta
+						 * da questo contenuto. Nessun elemento qui dentro ha bisogno
+						 * di un proprio click handler, quindi il click passa sempre
+						 * al link della card.
+						 */}
+						<div className="pointer-events-none relative z-20 flex h-full flex-col justify-end gap-3 p-6 sm:p-10 lg:p-14">
 							{post.categories.length > 0 && (
 								<ul className="flex flex-wrap gap-1.5">
 									{post.categories.slice(0, 2).map((cat) => (
@@ -111,7 +121,7 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 								aria-hidden="true"
 								className="mt-1 inline-flex w-fit items-center border border-white px-5 py-2 text-xs font-bold uppercase tracking-wide text-white transition group-hover:bg-white group-hover:text-notte"
 							>
-								Leggi l&rsquo;articolo
+								Leggi la ricetta
 							</span>
 						</div>
 					</article>
