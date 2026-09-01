@@ -211,6 +211,27 @@ function pphc_register_popular_posts_routes() {
 }
 add_action( 'rest_api_init', 'pphc_register_popular_posts_routes' );
 
+/**
+ * Sceglie l'URL migliore per la miniatura del widget "post piu' visti":
+ * la variante "thumbnail" (150x150) a volte non viene rigenerata per
+ * un'immagine appena caricata (es. sostituendo un file in libreria media),
+ * e wp_get_attachment_image_url() in quel caso puo' restituire un URL non
+ * valido invece di uno vuoto. Si prova quindi una serie di dimensioni via
+ * via piu' grandi, fermandosi alla prima che WordPress conferma esistere
+ * davvero — stesso principio di pickBestMediaUrl() in lib/wp.ts sul lato
+ * Next.js, cosi' una miniatura mancante non rompe piu' il widget in
+ * attesa che qualcuno rigeneri le miniature a mano.
+ */
+function pphc_best_thumbnail_url( $thumb_id ) {
+	foreach ( array( 'thumbnail', 'medium', 'full' ) as $size ) {
+		$url = wp_get_attachment_image_url( $thumb_id, $size );
+		if ( $url ) {
+			return $url;
+		}
+	}
+	return null;
+}
+
 function pphc_get_popular_posts( WP_REST_Request $request ) {
 	global $wpdb;
 
@@ -252,7 +273,7 @@ function pphc_get_popular_posts( WP_REST_Request $request ) {
 			'slug'      => get_post_field( 'post_name', $row->ID ),
 			'link'      => get_permalink( $row->ID ),
 			'views'     => (int) $views,
-			'thumbnail' => $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'thumbnail' ) : null,
+			'thumbnail' => $thumb_id ? pphc_best_thumbnail_url( $thumb_id ) : null,
 		);
 	};
 
