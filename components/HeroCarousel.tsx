@@ -121,7 +121,7 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 								aria-hidden="true"
 								className="mt-1 inline-flex w-fit items-center border border-white px-5 py-2 text-xs font-bold uppercase tracking-wide text-white transition group-hover:bg-white group-hover:text-notte"
 							>
-								Leggi la ricetta
+								Leggi
 							</span>
 						</div>
 					</article>
