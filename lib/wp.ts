@@ -303,8 +303,13 @@ export async function getFeaturedPosts(limit = 4): Promise<Post[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
+	// Tag sia `post:${slug}` (mirato) sia `posts` (generico): il webhook di
+	// revalidazione invalida sempre `posts` ad ogni salvataggio, mentre
+	// `post:${slug}` dipende dallo slug esatto inviato da WordPress nel
+	// payload — un doppio tag rende questa chiamata resiliente anche se per
+	// qualche motivo lo slug specifico non dovesse combaciare o arrivare.
 	const posts = await wpFetch<WPPost[]>(`/posts?slug=${encodeURIComponent(slug)}&_embed=1`, {
-		tags: [`post:${slug}`],
+		tags: [`post:${slug}`, 'posts'],
 	});
 	return posts[0] ? normalizePost(posts[0]) : null;
 }
