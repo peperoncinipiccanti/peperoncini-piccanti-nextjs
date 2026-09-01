@@ -148,7 +148,7 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 			 * leggibilità su sfondo scuro, separatori verticali tra gli item.
 			 */}
 			{posts.length > 1 && (
-				<ul className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-notte px-6 py-4 sm:px-10 sm:py-5">
+				<ul className="hidden flex-wrap items-center gap-x-6 gap-y-3 bg-notte px-6 py-4 sm:flex sm:px-10 sm:py-5">
 					{posts.map((post, i) => (
 						<li key={post.id} className="flex items-center gap-6">
 							<Link href={`/${post.slug}`} className="group/item flex flex-col gap-0.5">
