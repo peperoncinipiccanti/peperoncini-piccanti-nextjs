@@ -67,7 +67,15 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 				ref={scrollerRef}
 				className="pp-hero-scroller flex snap-x snap-mandatory overflow-x-auto"
 			>
-				{posts.map((post, i) => (
+				{posts.map((post, i) => {
+					// Testo del pulsante: "Guarda la ricetta" solo per gli articoli
+					// nella categoria "Ricette Piccanti" (stesso slug usato nel menu,
+					// vedi getMenu() in lib/wp.ts), "Leggi" per tutto il resto
+					// (varieta', guide di coltivazione, ecc.).
+					const isRecipe = post.categories.some((cat) => cat.slug === 'ricette-peperoncino-piccante');
+					const ctaLabel = isRecipe ? 'Guarda la ricetta' : 'Leggi';
+
+					return (
 					<article
 						key={post.id}
 						className="group relative min-h-[320px] w-full flex-none snap-start sm:min-h-[420px] lg:min-h-[560px]"
@@ -121,11 +129,12 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 								aria-hidden="true"
 								className="mt-1 inline-flex w-fit items-center border border-white px-5 py-2 text-xs font-bold uppercase tracking-wide text-white transition group-hover:bg-white group-hover:text-notte"
 							>
-								Leggi
+								{ctaLabel}
 							</span>
 						</div>
 					</article>
-				))}
+					);
+				})}
 			</div>
 
 			{posts.length > 1 && (
