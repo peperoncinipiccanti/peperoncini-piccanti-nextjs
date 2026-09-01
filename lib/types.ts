@@ -49,7 +49,8 @@ export interface WPPost {
 	link: string;
 	title: WPRendered;
 	content: WPRendered;
-	excerpt: WPRendered;
+	/** Assente quando la richiesta usa `_fields` senza includerlo (vedi getPosts() in lib/wp.ts, che non ne ha bisogno per le pagine "elenco"). */
+	excerpt?: WPRendered;
 	author: number;
 	featured_media: number;
 	categories: number[];

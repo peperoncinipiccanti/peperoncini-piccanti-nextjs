@@ -123,7 +123,11 @@ function normalizePost(raw: WPPost): Post {
 		link: raw.link,
 		date: raw.date,
 		title: decodeHtmlEntities(raw.title.rendered),
-		excerpt: raw.excerpt.rendered,
+		// `excerpt` non e' richiesto da getPosts() (vedi `_fields` sopra: le
+		// pagine "elenco" non lo usano) — opzionale a runtime, da qui il
+		// fallback: solo getPostBySlug()/getFeaturedPosts() lo popolano
+		// davvero (embed completo), e sono le uniche a leggere post.excerpt.
+		excerpt: raw.excerpt?.rendered ?? '',
 		content: raw.content.rendered,
 		rating: rating === null || Number.isNaN(rating) ? null : rating,
 		featured: raw.is_featured === true,
@@ -186,6 +190,17 @@ export async function getPosts(
 		per_page: String(perPage),
 		orderby: 'date',
 		order: 'desc',
+		// `excerpt` e `tags` (l'array di ID, non le tassonomie embeddate) non
+		// sono mai letti da normalizePost() per le pagine "elenco" che usano
+		// getPosts() (card, carousel, ricerca — vedi PostCard.tsx): solo la
+		// pagina del singolo articolo ne ha bisogno, e usa getPostBySlug(),
+		// una chiamata separata non toccata da questo filtro. Ometterli qui
+		// riduce il peso della risposta senza cambiare cosa si vede in
+		// nessuna pagina. `_links`/`_embedded` vanno elencati esplicitamente:
+		// `_fields` e' una whitelist, e senza indicarli sparirebbe anche
+		// tutto l'embed (foto, autore, tassonomie).
+		_fields:
+			'id,slug,link,date,title,content,author,featured_media,is_featured,pphc_menu_order,pphc_review,_links,_embedded',
 	});
 	if (categoryId) params.set('categories', String(categoryId));
 	if (tagId) params.set('tags', String(tagId));

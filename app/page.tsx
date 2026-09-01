@@ -21,12 +21,16 @@ export default async function HomePage() {
 	// il punteggio a cerchio), con le freccette che scorrono il widget
 	// mostrando il gruppo successivo di 5 (1 grande + 4 piccoli) — non e' una
 	// paginazione di pagina, resta tutto in home. Si precarica quindi un
-	// blocco piu' ampio (20 = 4 "pagine" da 5) in una sola chiamata, cosi'
+	// blocco piu' ampio (15 = 3 "pagine" da 5) in una sola chiamata, cosi'
 	// ReviewsCarousel puo' scorrere lato client senza richieste aggiuntive al
-	// WordPress a ogni click sulle frecce.
+	// WordPress a ogni click sulle frecce. Era 20 (4 pagine): con l'embed
+	// completo di 20 post la risposta superava i 2MB e Next.js smetteva di
+	// metterla in cache (vedi anche il fields-trimming in getPosts()), 15
+	// resta abbondantemente sotto quel limite mantenendo comunque 3 pagine
+	// di contenuti da scorrere.
 	const varietaCategory = await getCategoryBySlug('varieta-peperoncino');
 	const { posts: reviews } = varietaCategory
-		? await getPosts({ perPage: 20, categoryId: varietaCategory.id, exclude: heroIds })
+		? await getPosts({ perPage: 15, categoryId: varietaCategory.id, exclude: heroIds })
 		: { posts: [] };
 
 	const recentComments = await getRecentComments(7);
