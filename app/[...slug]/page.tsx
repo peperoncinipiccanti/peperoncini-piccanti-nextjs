@@ -125,8 +125,10 @@ async function ArchiveView({
 }) {
 	// getPosts e getPopularPosts sono indipendenti: si eseguono insieme
 	// invece che in sequenza per non raddoppiare il tempo di risposta.
+	// perPage: 8, non 9 — la griglia e' a 2 colonne, 8 riempie esattamente
+	// 4 righe complete invece di lasciare un'ultima card spaiata da sola.
 	const [{ posts, totalPages }, popular] = await Promise.all([
-		getPosts({ ...postsQuery, page, perPage: 9 }),
+		getPosts({ ...postsQuery, page, perPage: 8 }),
 		getPopularPosts(5),
 	]);
 
