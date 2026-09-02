@@ -65,7 +65,7 @@ export default async function HomePage() {
 	// gli articoli con il tag "conservare", non piu' una manciata di slug
 	// scelti a mano — cosi' un nuovo articolo con quel tag compare qui
 	// automaticamente, senza dover toccare il codice ogni volta.
-	const conservareTag = await getTagBySlug('conservare');
+	const conservareTag = await getTagBySlug('conservare-peperoncino');
 	const { posts: preservePosts } = conservareTag
 		? await getPosts({ perPage: 20, tagId: conservareTag.id })
 		: { posts: [] };
