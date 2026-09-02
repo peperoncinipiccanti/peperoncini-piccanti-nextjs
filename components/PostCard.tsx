@@ -52,16 +52,18 @@ export function PostCard({
 				{/*
 				 * "flex-nowrap" invece di "flex-wrap": con 2 categorie dal nome
 				 * lungo, andare a capo faceva coprire quasi tutta la foto su
-				 * mobile (la card e' stretta). Ogni tag ora si restringe
-				 * (min-w-0 + truncate) restando su un'unica riga, con i nomi
-				 * troppo lunghi tagliati con "…" invece di spingere a capo.
+				 * mobile (la card e' stretta). Niente "…" (poco leggibile): si
+				 * riduce invece testo e padding su mobile (dimensione originale
+				 * ripristinata da "sm" in su, dove la card e' piu' larga), cosi'
+				 * il nome resta leggibile per intero e i due tag restano su
+				 * un'unica riga senza coprire la foto.
 				 */}
 				{post.categories.length > 0 && (
-					<ul className="flex flex-nowrap gap-1.5 overflow-hidden">
+					<ul className="flex flex-nowrap gap-1">
 						{post.categories.slice(0, 2).map((cat) => (
 							<li
 								key={cat.id}
-								className="pp-tag min-w-0 shrink truncate bg-teal px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white"
+								className="pp-tag whitespace-nowrap bg-teal px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-white sm:px-3 sm:py-1 sm:text-[0.7rem]"
 							>
 								{cat.name}
 							</li>
