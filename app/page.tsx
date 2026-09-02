@@ -6,7 +6,7 @@ import { PreserveCarousel } from '@/components/PreserveCarousel';
 import { RecentComments } from '@/components/RecentComments';
 import { ReviewsCarousel } from '@/components/ReviewsCarousel';
 import { SocialFansCounter } from '@/components/SocialFansCounter';
-import { getCategoryBySlug, getFeaturedPosts, getPostBySlug, getPosts, getRecentComments } from '@/lib/wp';
+import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments, getTagBySlug } from '@/lib/wp';
 import { getSocialFanCounts } from '@/lib/social';
 
 export default async function HomePage() {
@@ -61,21 +61,14 @@ export default async function HomePage() {
 		: { posts: [] };
 	const ctaImage = coltivarePosts[0]?.featuredImage ?? reviews[0]?.featuredImage ?? null;
 
-	// Sezione "Come conservare i peperoncini | I metodi piu' comuni": nel
-	// vecchio tema NON e' l'elenco della categoria Ricette (che li' non
-	// compariva affatto in questa posizione), ma uno slider con una manciata
-	// di articoli scelti a mano dall'editor — quindi si prendono per slug
-	// esatto, non per categoria, con una sola serie di richieste in
-	// parallelo (cache ISR come il resto del sito).
-	const preserveSlugs = [
-		'come-evitare-botulino-nelle-conserve',
-		'congelare-peperoncini',
-		'peperoncini-essiccati',
-		'come-essiccare-peperoncini',
-	];
-	const preservePosts = (await Promise.all(preserveSlugs.map((slug) => getPostBySlug(slug)))).filter(
-		(post): post is NonNullable<typeof post> => post !== null
-	);
+	// Sezione "Come conservare i peperoncini | I metodi piu' comuni": tutti
+	// gli articoli con il tag "conservare", non piu' una manciata di slug
+	// scelti a mano — cosi' un nuovo articolo con quel tag compare qui
+	// automaticamente, senza dover toccare il codice ogni volta.
+	const conservareTag = await getTagBySlug('conservare');
+	const { posts: preservePosts } = conservareTag
+		? await getPosts({ perPage: 20, tagId: conservareTag.id })
+		: { posts: [] };
 
 	return (
 		<main id="top">
