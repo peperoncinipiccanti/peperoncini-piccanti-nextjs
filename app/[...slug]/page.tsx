@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArticleContent } from '@/components/ArticleContent';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
@@ -208,10 +209,14 @@ function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> })
 				 * e' la pratica standard per WordPress headless. Per una protezione
 				 * aggiuntiva in profondita' si puo' filtrarlo con una libreria come
 				 * isomorphic-dompurify prima del render.
+				 *
+				 * ArticleContent (client component) intercetta anche il click sulle
+				 * immagini per aprirle in un overlay invece di navigare al file —
+				 * vedi il commento li' dentro.
 				 */}
-				<div
+				<ArticleContent
+					html={post.content}
 					className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
-					dangerouslySetInnerHTML={{ __html: post.content }}
 				/>
 
 				{post.tags.length > 0 && (
