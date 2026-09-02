@@ -29,7 +29,14 @@ export function PostCard({
 		<article className="group relative isolate overflow-hidden bg-notte">
 			<Link href={`/${post.slug}`} className="absolute inset-0 z-10" aria-label={post.title} />
 
-			<div className={`relative w-full overflow-hidden ${isLarge ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-[4/3]'}`}>
+			{/*
+			 * "aspect-[4/5]" (piu' alta di "aspect-[4/3]" di prima): altezza
+			 * standard per tutte le card, non solo quelle con 2 categorie —
+			 * cosi' la griglia resta allineata e c'e' sempre margine sufficiente
+			 * perche' i tag categoria vadano a capo su 2 righe (vedi sotto)
+			 * senza coprire buona parte della foto.
+			 */}
+			<div className={`relative w-full overflow-hidden ${isLarge ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-[4/5]'}`}>
 				{post.featuredImage ? (
 					<Image
 						src={post.featuredImage.url}
@@ -50,20 +57,21 @@ export function PostCard({
 
 			<div className="absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 p-5">
 				{/*
-				 * "flex-nowrap" invece di "flex-wrap": con 2 categorie dal nome
-				 * lungo, andare a capo faceva coprire quasi tutta la foto su
-				 * mobile (la card e' stretta). Niente "…" (poco leggibile): si
-				 * riduce invece testo e padding su mobile (dimensione originale
-				 * ripristinata da "sm" in su, dove la card e' piu' larga), cosi'
-				 * il nome resta leggibile per intero e i due tag restano su
-				 * un'unica riga senza coprire la foto.
+				 * Due tentativi precedenti scartati: il taglio con "…" (poco
+				 * leggibile) e il testo ristretto forzato su un'unica riga (con
+				 * nomi categoria lunghi non ci stava comunque, e veniva tagliato
+				 * di netto dal bordo della card). Ora i tag vanno a capo
+				 * normalmente ("flex-wrap", nome sempre leggibile per intero) e
+				 * lo spazio per una seconda riga c'e' sempre, perche' la card ha
+				 * un'altezza standard maggiore (vedi "aspect-[4/5]" sopra) invece
+				 * di essere alta solo quanto serve per una riga di tag.
 				 */}
 				{post.categories.length > 0 && (
-					<ul className="flex flex-nowrap gap-1">
-						{post.categories.slice(0, 2).map((cat) => (
+					<ul className="flex flex-wrap gap-1.5">
+						{post.categories.map((cat) => (
 							<li
 								key={cat.id}
-								className="pp-tag whitespace-nowrap bg-teal px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-white sm:px-3 sm:py-1 sm:text-[0.7rem]"
+								className="pp-tag bg-teal px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white"
 							>
 								{cat.name}
 							</li>
