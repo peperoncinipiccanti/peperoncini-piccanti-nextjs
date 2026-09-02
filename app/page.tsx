@@ -5,7 +5,9 @@ import { HeroCarousel } from '@/components/HeroCarousel';
 import { PreserveCarousel } from '@/components/PreserveCarousel';
 import { RecentComments } from '@/components/RecentComments';
 import { ReviewsCarousel } from '@/components/ReviewsCarousel';
+import { SocialFansCounter } from '@/components/SocialFansCounter';
 import { getCategoryBySlug, getFeaturedPosts, getPostBySlug, getPosts, getRecentComments } from '@/lib/wp';
+import { getSocialFanCounts } from '@/lib/social';
 
 export default async function HomePage() {
 	// Il carosello hero mostra gli articoli scelti a mano come "Featured" nel
@@ -34,6 +36,7 @@ export default async function HomePage() {
 		: { posts: [] };
 
 	const recentComments = await getRecentComments(7);
+	const socialCounts = await getSocialFanCounts();
 
 	// Banner "Vuoi imparare come coltivare in casa il peperoncino?": nel
 	// vecchio tema e' una foto a tutta larghezza con overlay nero al 35% e
@@ -88,7 +91,10 @@ export default async function HomePage() {
 					<ReviewsCarousel posts={reviews} />
 				</div>
 
-				<RecentComments comments={recentComments} />
+				<div>
+					<SocialFansCounter counts={socialCounts} />
+					<RecentComments comments={recentComments} />
+				</div>
 			</section>
 
 			{/*
