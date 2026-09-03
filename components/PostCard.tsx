@@ -60,14 +60,16 @@ export function PostCard({
 				 * Due tentativi precedenti scartati: il taglio con "…" (poco
 				 * leggibile) e il testo ristretto forzato su un'unica riga (con
 				 * nomi categoria lunghi non ci stava comunque, e veniva tagliato
-				 * di netto dal bordo della card). Ora i tag vanno a capo
-				 * normalmente ("flex-wrap", nome sempre leggibile per intero) e
-				 * lo spazio per una seconda riga c'e' sempre, perche' la card ha
-				 * un'altezza standard maggiore (vedi "aspect-[4/5]" sopra) invece
-				 * di essere alta solo quanto serve per una riga di tag.
+				 * di netto dal bordo della card). Poi si era allargata la card
+				 * per fare spazio a 2 righe di tag — ma su mobile, con card a
+				 * piena larghezza e nomi lunghi, i tag finivano comunque per
+				 * sovrapporsi tra loro. Soluzione finale: sotto "sm" i tag
+				 * categoria non si mostrano affatto (restano titolo e rating),
+				 * da tablet in su (card più larga, meno rischio di sovrapposizione)
+				 * tornano visibili normalmente.
 				 */}
 				{post.categories.length > 0 && (
-					<ul className="flex flex-wrap gap-1.5">
+					<ul className="hidden flex-wrap gap-1.5 sm:flex">
 						{post.categories.map((cat) => (
 							<li
 								key={cat.id}
