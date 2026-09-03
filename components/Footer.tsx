@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FacebookIcon, InstagramIcon, PinterestIcon, XIcon } from './icons';
+import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, XIcon } from './icons';
 
 type MenuItem = { label: string; href: string };
 
@@ -25,6 +25,16 @@ export function Footer({ menu }: { menu: MenuItem[] }) {
 						</a>
 						<a href="https://x.com/peperoncinip" target="_blank" rel="noreferrer" aria-label="X (Twitter)">
 							<XIcon size={18} />
+						</a>
+						{/* Profilo personale (non la pagina del blog): a differenza degli
+						    altri, punta a un account LinkedIn individuale, non del brand. */}
+						<a
+							href="https://www.linkedin.com/in/danieleibba/"
+							target="_blank"
+							rel="noreferrer"
+							aria-label="LinkedIn"
+						>
+							<LinkedinIcon size={18} />
 						</a>
 					</div>
 				</div>

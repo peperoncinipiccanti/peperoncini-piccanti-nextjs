@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
-import { FacebookIcon, InstagramIcon } from './icons';
+import { FacebookIcon, InstagramIcon, LinkedinIcon } from './icons';
 import { BreakingTicker } from './BreakingTicker';
 import { MobileMenu } from './MobileMenu';
 import { getTickerPosts } from '@/lib/wp';
@@ -37,6 +37,16 @@ export async function Header({ menu }: { menu: MenuItem[] }) {
 						aria-label="Instagram"
 					>
 						<InstagramIcon size={16} />
+					</a>
+					{/* Profilo personale (non la pagina del blog): a differenza degli
+					    altri, punta a un account LinkedIn individuale, non del brand. */}
+					<a
+						href="https://www.linkedin.com/in/danieleibba/"
+						target="_blank"
+						rel="noreferrer"
+						aria-label="LinkedIn"
+					>
+						<LinkedinIcon size={16} />
 					</a>
 				</div>
 			</div>

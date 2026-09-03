@@ -51,3 +51,20 @@ export function XIcon({ size = 18, className }: IconProps) {
 		</svg>
 	);
 }
+
+export function LinkedinIcon({ size = 18, className }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+			<rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" />
+			<path d="M8.2 10.2v6.2M8.2 7.7v.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+			<path
+				d="M11.6 16.4v-3.6c0-1.2.9-2.2 2-2.2s1.9 1 1.9 2.2v3.6"
+				stroke="currentColor"
+				strokeWidth="1.6"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+			<path d="M11.6 16.4v-4.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+		</svg>
+	);
+}
