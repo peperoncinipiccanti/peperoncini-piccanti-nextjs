@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { AboutSection } from '@/components/AboutSection';
+import { HealthCarousel } from '@/components/HealthCarousel';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { PreserveCarousel } from '@/components/PreserveCarousel';
 import { RecentComments } from '@/components/RecentComments';
@@ -70,6 +71,14 @@ export default async function HomePage() {
 		? await getPosts({ perPage: 20, tagId: conservareTag.id })
 		: { posts: [] };
 
+	// Blocco sidebar "Peperoncino e Salute": stesso pattern per tag di sopra,
+	// ma renderizzato da HealthCarousel (una sola card alla volta, che scorre
+	// da sola) invece che in griglia — vedi il commento li' dentro.
+	const healthTag = await getTagBySlug('salute-peperoncino');
+	const { posts: healthPosts } = healthTag
+		? await getPosts({ perPage: 20, tagId: healthTag.id })
+		: { posts: [] };
+
 	return (
 		<main id="top">
 			<HeroCarousel posts={heroPosts} />
@@ -86,6 +95,7 @@ export default async function HomePage() {
 
 				<div>
 					<SocialFansCounter counts={socialCounts} />
+					<HealthCarousel posts={healthPosts} />
 					<RecentComments comments={recentComments} />
 				</div>
 			</section>
