@@ -13,30 +13,36 @@ import { RatingBadge } from './RatingBadge';
  * "Le mie recensioni" in home (vedi app/page.tsx): stessa card, solo piu'
  * bassa/larga e con titolo piu' grande, per renderla visivamente doppia
  * rispetto alle 4 card piccole sotto — replica del vecchio tema.
+ *
+ * `mobileSquareImage` e' usato solo da HealthCarousel e PreserveCarousel
+ * (una card sola a piena larghezza su mobile, non una griglia): li' la
+ * "aspect-[4/5]" standard risultava troppo alta. Da "sm" in su torna alla
+ * stessa "aspect-[4/5]" di tutte le altre card, per coerenza col resto del
+ * sito (griglie categoria/ricerca, ReviewsCarousel), che restano invariate.
  */
 export function PostCard({
 	post,
 	priority = false,
 	size = 'default',
+	mobileSquareImage = false,
 }: {
 	post: Post;
 	priority?: boolean;
 	size?: 'default' | 'large';
+	mobileSquareImage?: boolean;
 }) {
 	const isLarge = size === 'large';
+	const imageAspect = isLarge
+		? 'aspect-[16/9] sm:aspect-[21/9]'
+		: mobileSquareImage
+			? 'aspect-square sm:aspect-[4/5]'
+			: 'aspect-[4/5]';
 
 	return (
 		<article className="group relative isolate overflow-hidden bg-notte">
 			<Link href={`/${post.slug}`} className="absolute inset-0 z-10" aria-label={post.title} />
 
-			{/*
-			 * "aspect-[4/5]" (piu' alta di "aspect-[4/3]" di prima): altezza
-			 * standard per tutte le card, non solo quelle con 2 categorie —
-			 * cosi' la griglia resta allineata e c'e' sempre margine sufficiente
-			 * perche' i tag categoria vadano a capo su 2 righe (vedi sotto)
-			 * senza coprire buona parte della foto.
-			 */}
-			<div className={`relative w-full overflow-hidden ${isLarge ? 'aspect-[16/9] sm:aspect-[21/9]' : 'aspect-[4/5]'}`}>
+			<div className={`relative w-full overflow-hidden ${imageAspect}`}>
 				{post.featuredImage ? (
 					<Image
 						src={post.featuredImage.url}

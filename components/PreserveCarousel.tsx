@@ -44,7 +44,7 @@ export function PreserveCarousel({ posts }: { posts: Post[] }) {
 				<div ref={scrollerRef} className="pp-hero-scroller flex snap-x snap-mandatory gap-6 overflow-x-auto">
 					{posts.map((post) => (
 						<div key={post.id} className="w-full flex-none snap-start sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]">
-							<PostCard post={post} />
+							<PostCard post={post} mobileSquareImage />
 						</div>
 					))}
 				</div>
