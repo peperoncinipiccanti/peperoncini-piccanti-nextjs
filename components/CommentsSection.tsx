@@ -1,7 +1,9 @@
 import type { PostComment } from '@/lib/types';
 import { CommentForm } from './CommentForm';
+import { CommentsList } from './CommentsList';
 
 const MAX_INDENT_LEVEL = 3; // oltre, le risposte restano allo stesso livello per non schiacciare il testo su mobile
+const INITIAL_VISIBLE_THREADS = 5; // thread di primo livello mostrati prima di "Visualizza tutti i commenti"
 
 /** Raggruppa la lista piatta di commenti per genitore, per poterla percorrere come un albero. */
 function groupByParent(comments: PostComment[]): Map<number, PostComment[]> {
@@ -69,20 +71,22 @@ function CommentNode({
  * app/api/comments/route.ts sull'impostazione "approvazione manuale").
  */
 export function CommentsSection({ postId, comments }: { postId: number; comments: PostComment[] }) {
+	// `comments` arriva ordinato dal piu' vecchio al piu' nuovo (vedi
+	// getPostComments in lib/wp.ts): gli ultimi elementi dell'array sono
+	// quindi i thread piu' recenti, quelli mostrati di default.
 	const topLevel = comments.filter((c) => c.parentId === 0);
 	const byParent = groupByParent(comments);
+	const nodes = topLevel.map((comment) => (
+		<CommentNode key={comment.id} comment={comment} byParent={byParent} level={0} />
+	));
+	const recentNodes = nodes.slice(-INITIAL_VISIBLE_THREADS);
+	const olderNodes = nodes.slice(0, Math.max(0, nodes.length - INITIAL_VISIBLE_THREADS));
 
 	return (
 		<section aria-label="Commenti" className="mt-12 border-t border-bordo pt-10">
 			<h2 className="mb-6 text-2xl">{comments.length > 0 ? `${comments.length} commenti` : 'Commenti'}</h2>
 
-			{topLevel.length > 0 && (
-				<ul className="mb-10 flex flex-col gap-5">
-					{topLevel.map((comment) => (
-						<CommentNode key={comment.id} comment={comment} byParent={byParent} level={0} />
-					))}
-				</ul>
-			)}
+			{topLevel.length > 0 && <CommentsList recent={recentNodes} older={olderNodes} />}
 
 			{topLevel.length === 0 && (
 				<p className="mb-8 text-sm text-testo-secondario">Nessun commento, per ora: lascia il primo!</p>
