@@ -14,10 +14,37 @@ const nextConfig = {
 	images: {
 		// AVIF prima di WebP: nella maggior parte dei casi pesa meno a parita' di qualita'.
 		formats: ['image/avif', 'image/webp'],
+		// Oltre all'host "corretto" (cms.*, quello impostato in WP_API_URL), si
+		// autorizza temporaneamente anche www.peperoncinipiccanti.com in http e
+		// https: l'opzione "Indirizzo sito" di WordPress non e' ancora stata
+		// aggiornata dopo la migrazione, quindi molti URL immagine nel database
+		// (media library + <img> dentro al contenuto dei post vecchi) puntano
+		// ancora li'. Da rimuovere una volta fatto il search-replace nel DB
+		// WordPress (vedi nota) che sposta tutto su cms.peperoncinipiccanti.com.
 		remotePatterns: [
 			{
 				protocol: 'https',
 				hostname: WP_HOSTNAME,
+				pathname: '/wp-content/uploads/**',
+			},
+			{
+				protocol: 'https',
+				hostname: 'www.peperoncinipiccanti.com',
+				pathname: '/wp-content/uploads/**',
+			},
+			{
+				protocol: 'http',
+				hostname: 'www.peperoncinipiccanti.com',
+				pathname: '/wp-content/uploads/**',
+			},
+			{
+				protocol: 'https',
+				hostname: 'peperoncinipiccanti.com',
+				pathname: '/wp-content/uploads/**',
+			},
+			{
+				protocol: 'http',
+				hostname: 'peperoncinipiccanti.com',
 				pathname: '/wp-content/uploads/**',
 			},
 		],
