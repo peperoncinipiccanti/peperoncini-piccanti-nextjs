@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
- * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
- * Version: 1.0.0
+ * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), i contatori "Condivisioni"/"Love" di ogni articolo, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
+ * Version: 1.1.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
  */
@@ -360,6 +360,113 @@ function pphc_track_view( WP_REST_Request $request ) {
 	);
 
 	return array( 'tracked' => true );
+}
+
+/**
+ * ------------------------------------------------------------------
+ * Contatori "Condivisioni" e "Love" mostrati in cima ad ogni articolo —
+ * salvati come normali post meta (`pphc_share_count`, `pphc_love_count`),
+ * NON collegati a nessuna API di conteggio condivisioni di Facebook/Twitter:
+ * quegli endpoint pubblici sono stati dismessi da anni, oggi nessun social
+ * espone piu' "quante volte e' stato condiviso" un URL, ne' per un sito
+ * headless ne' per uno tradizionale. Il numero rappresenta quindi quante
+ * volte i VISITATORI DI QUESTO SITO hanno cliccato un pulsante di
+ * condivisione o il cuoricino "Love" — non il conteggio globale sui social.
+ *
+ * Esposti in REST come `pphc_shares`/`pphc_loves` (letti direttamente sul
+ * post, cosi' arrivano gia' dentro alla normale risposta di /wp/v2/posts
+ * senza una chiamata separata — stesso pattern di is_featured sopra), e
+ * incrementati dalla route POST /pphc/v1/react, chiamata dal browser del
+ * visitatore tramite /api/react nel progetto Next.js (che fa da proxy
+ * server-side, stesso principio di /api/track-view: evita di dover
+ * configurare CORS per le richieste POST).
+ *
+ * Nessuna protezione anti-doppio-click lato server: il frontend ricorda in
+ * localStorage se il visitatore ha gia' messo "Love" a QUESTO articolo per
+ * evitare click ripetuti involontari, ma resta un contatore "di piacere",
+ * non un sistema antifrode — un utente deciso a votare piu' volte
+ * cancellando i dati del browser puo' comunque farlo.
+ * ------------------------------------------------------------------
+ */
+function pphc_register_reaction_fields() {
+	register_rest_field(
+		'post',
+		'pphc_shares',
+		array(
+			'get_callback' => function ( $post ) {
+				return (int) get_post_meta( $post['id'], 'pphc_share_count', true );
+			},
+			'schema'       => array(
+				'description' => __( 'Numero di volte in cui un visitatore ha cliccato un pulsante di condivisione su questo articolo.', 'peperoncini-headless' ),
+				'type'        => 'integer',
+				'context'     => array( 'view' ),
+			),
+		)
+	);
+
+	register_rest_field(
+		'post',
+		'pphc_loves',
+		array(
+			'get_callback' => function ( $post ) {
+				return (int) get_post_meta( $post['id'], 'pphc_love_count', true );
+			},
+			'schema'       => array(
+				'description' => __( 'Numero di "Love" ricevuti da questo articolo.', 'peperoncini-headless' ),
+				'type'        => 'integer',
+				'context'     => array( 'view' ),
+			),
+		)
+	);
+}
+add_action( 'rest_api_init', 'pphc_register_reaction_fields' );
+
+function pphc_register_reaction_route() {
+	register_rest_route(
+		'pphc/v1',
+		'/react',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'pphc_handle_reaction',
+			'permission_callback' => '__return_true',
+		)
+	);
+}
+add_action( 'rest_api_init', 'pphc_register_reaction_route' );
+
+/**
+ * Incrementa di 1 il contatore richiesto ("share" o "love") per un articolo
+ * pubblicato. Stesso schema minimale di pphc_track_view() sopra: nessuna
+ * autenticazione richiesta (il pulsante e' pubblico), nessun limite di
+ * frequenza lato server (la protezione anti-doppio-click per "love" e'
+ * demandata al frontend via localStorage, vedi commento sopra).
+ */
+function pphc_handle_reaction( WP_REST_Request $request ) {
+	$post_id = (int) $request->get_param( 'postId' );
+	$type    = (string) $request->get_param( 'type' );
+
+	if ( ! $post_id || 'publish' !== get_post_status( $post_id ) ) {
+		return new WP_Error( 'pphc_invalid_post', 'Post non valido.', array( 'status' => 400 ) );
+	}
+
+	$meta_key = null;
+	if ( 'share' === $type ) {
+		$meta_key = 'pphc_share_count';
+	} elseif ( 'love' === $type ) {
+		$meta_key = 'pphc_love_count';
+	}
+
+	if ( ! $meta_key ) {
+		return new WP_Error( 'pphc_invalid_type', 'Tipo di reazione non valido: usa "share" o "love".', array( 'status' => 400 ) );
+	}
+
+	$new_value = (int) get_post_meta( $post_id, $meta_key, true ) + 1;
+	update_post_meta( $post_id, $meta_key, $new_value );
+
+	return array(
+		'type'  => $type,
+		'count' => $new_value,
+	);
 }
 
 /**

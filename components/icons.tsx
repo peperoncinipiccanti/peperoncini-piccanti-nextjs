@@ -52,6 +52,38 @@ export function XIcon({ size = 18, className }: IconProps) {
 	);
 }
 
+export function WhatsappIcon({ size = 18, className }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+			<path
+				d="M12 4a8 8 0 0 0-6.9 12l-1 3.9 4-1a8 8 0 1 0 3.9-14.9Z"
+				stroke="currentColor"
+				strokeWidth="1.6"
+				strokeLinejoin="round"
+			/>
+			<path
+				d="M9.2 9.3c-.2.9.4 1.9 1 2.6.7.8 1.6 1.4 2.6 1.7.4.1.9 0 1-.4l.3-.7c.1-.3.4-.4.7-.3l1.3.5c.3.1.4.4.3.7-.3.9-1.2 1.5-2.1 1.4-2-.2-4.6-2.2-5.2-4.2-.3-.9.1-1.9.9-2.4.3-.2.6-.1.8.1l.6 1c.1.3.1.6-.2.9Z"
+				fill="currentColor"
+			/>
+		</svg>
+	);
+}
+
+export function TelegramIcon({ size = 18, className }: IconProps) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+			<circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+			<path
+				d="m8 12.3 3.1 1.9 5.4-6.5c.2-.2 0-.5-.3-.4L7.1 11c-.3.1-.3.5 0 .6l2 .7.7 2.6c.1.3.5.4.7.1l1.2-1.5"
+				stroke="currentColor"
+				strokeWidth="1.4"
+				strokeLinejoin="round"
+				strokeLinecap="round"
+			/>
+		</svg>
+	);
+}
+
 export function LinkedinIcon({ size = 18, className }: IconProps) {
 	return (
 		<svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">

@@ -156,6 +156,8 @@ function normalizePost(raw: WPPost): Post {
 			.map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
 		tags: terms.filter((t) => t.taxonomy === 'post_tag').map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
 		author: author ? { name: author.name, bio: author.description ?? '' } : null,
+		shares: raw.pphc_shares ?? 0,
+		loves: raw.pphc_loves ?? 0,
 	};
 }
 

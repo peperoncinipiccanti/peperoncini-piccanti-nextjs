@@ -58,6 +58,9 @@ export interface WPPost {
 	/** Aggiunti dal plugin companion (register_rest_field): vedi wp-plugin/peperoncini-headless-companion.php */
 	is_featured?: boolean;
 	pphc_menu_order?: number;
+	/** Contatori "Condivisioni"/"Love" in cima all'articolo, vedi ArticleReactions.tsx. */
+	pphc_shares?: number;
+	pphc_loves?: number;
 	/**
 	 * Punteggio review del tema Edition (media dei "Review Criteria"), solo
 	 * per i post marcati come review — es. le varieta' di peperoncino, MAI
@@ -165,4 +168,7 @@ export interface Post {
 	categories: { id: number; name: string; slug: string }[];
 	tags: { id: number; name: string; slug: string }[];
 	author: { name: string; bio: string } | null;
+	/** Contatori "Condivisioni"/"Love" mostrati in cima all'articolo (vedi ArticleReactions.tsx). */
+	shares: number;
+	loves: number;
 }

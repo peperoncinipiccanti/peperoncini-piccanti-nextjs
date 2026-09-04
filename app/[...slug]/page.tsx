@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArticleContent } from '@/components/ArticleContent';
+import { ArticleReactions } from '@/components/ArticleReactions';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
@@ -11,6 +12,7 @@ import { PopularPostsWidget } from '@/components/PopularPostsWidget';
 import { PopularTagsWidget } from '@/components/PopularTagsWidget';
 import { RecentComments } from '@/components/RecentComments';
 import { RelatedPosts } from '@/components/RelatedPosts';
+import { ShareButtons } from '@/components/ShareButtons';
 import { ViewTracker } from '@/components/ViewTracker';
 import {
 	getCategoryBySlug,
@@ -239,6 +241,14 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 						<time dateTime={post.date}>{formattedDate}</time>
 					</div>
 
+					{/* Contatori condivisioni/commenti/love in cima all'articolo — vedi ArticleReactions.tsx. */}
+					<ArticleReactions
+						postId={post.id}
+						initialShares={post.shares}
+						initialLoves={post.loves}
+						commentsCount={postComments.length}
+					/>
+
 					{/*
 					 * Il contenuto arriva dalla WP REST API del tuo stesso sito (fonte
 					 * fidata, non input di visitatori): renderlo con dangerouslySetInnerHTML
@@ -254,6 +264,9 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 						html={post.content}
 						className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
 					/>
+
+					{/* Pulsanti di condivisione in fondo all'articolo — vedi ShareButtons.tsx. */}
+					<ShareButtons postId={post.id} title={post.title} />
 
 					{post.tags.length > 0 && (
 						<ul className="mt-8 flex flex-wrap gap-2 border-t border-bordo pt-6 text-xs text-testo-secondario">
