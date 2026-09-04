@@ -7,8 +7,20 @@ import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
 import { PopularPostsWidget } from '@/components/PopularPostsWidget';
+import { PopularTagsWidget } from '@/components/PopularTagsWidget';
+import { RecentComments } from '@/components/RecentComments';
+import { RelatedPosts } from '@/components/RelatedPosts';
 import { ViewTracker } from '@/components/ViewTracker';
-import { getCategoryBySlug, getPopularPosts, getPostBySlug, getPosts, getTagBySlug } from '@/lib/wp';
+import {
+	getCategoryBySlug,
+	getPopularPosts,
+	getPopularTags,
+	getPostBySlug,
+	getPosts,
+	getRecentComments,
+	getRelatedPosts,
+	getTagBySlug,
+} from '@/lib/wp';
 
 type Props = {
 	params: Promise<{ slug: string[] }>;
@@ -70,7 +82,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 
 	const post = await getPostBySlug(target);
 	if (post) {
-		return <PostView post={post} />;
+		return PostView({ post });
 	}
 
 	const category = await getCategoryBySlug(target);
@@ -123,13 +135,16 @@ async function ArchiveView({
 	page: number;
 	basePath: string;
 }) {
-	// getPosts e getPopularPosts sono indipendenti: si eseguono insieme
-	// invece che in sequenza per non raddoppiare il tempo di risposta.
-	// perPage: 8, non 9 — la griglia e' a 2 colonne, 8 riempie esattamente
-	// 4 righe complete invece di lasciare un'ultima card spaiata da sola.
-	const [{ posts, totalPages }, popular] = await Promise.all([
+	// getPosts, getPopularPosts, getRecentComments e getPopularTags sono
+	// indipendenti: si eseguono insieme invece che in sequenza per non
+	// sommare i tempi di risposta. perPage: 8, non 9 — la griglia e' a 2
+	// colonne, 8 riempie esattamente 4 righe complete invece di lasciare
+	// un'ultima card spaiata da sola.
+	const [{ posts, totalPages }, popular, recentComments, popularTags] = await Promise.all([
 		getPosts({ ...postsQuery, page, perPage: 8 }),
 		getPopularPosts(5),
+		getRecentComments(7),
+		getPopularTags(12),
 	]);
 
 	if (posts.length === 0 && page === 1) notFound();
@@ -150,20 +165,30 @@ async function ArchiveView({
 					<Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
 				</div>
 
-				<PopularPostsWidget weekly={popular.weekly} monthly={popular.monthly} allTime={popular.all_time} />
+				<div className="flex flex-col gap-10">
+					<PopularPostsWidget weekly={popular.weekly} monthly={popular.monthly} allTime={popular.all_time} />
+					<RecentComments comments={recentComments} />
+					<PopularTagsWidget tags={popularTags} />
+				</div>
 			</div>
 		</main>
 	);
 }
 
-function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> }) {
-	if (!post) return null;
-
+async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>> }) {
 	const formattedDate = new Date(post.date).toLocaleDateString('it-IT', {
 		day: 'numeric',
 		month: 'long',
 		year: 'numeric',
 	});
+
+	// Indipendenti tra loro: si eseguono insieme invece che in sequenza per
+	// non sommare i tempi di risposta (stesso pattern di ArchiveView sopra).
+	const [recentComments, popularTags, relatedPosts] = await Promise.all([
+		getRecentComments(7),
+		getPopularTags(12),
+		getRelatedPosts(post, 3),
+	]);
 
 	return (
 		<main>
@@ -182,64 +207,78 @@ function PostView({ post }: { post: Awaited<ReturnType<typeof getPostBySlug>> })
 				</div>
 			)}
 
-			<article className="mx-auto max-w-3xl px-4 py-10">
-				{post.categories.length > 0 && (
-					<ul className="mb-3 flex flex-wrap gap-1.5">
-						{post.categories.map((cat, i) => (
-							<li
-								key={cat.id}
-								className={`px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white ${
-									i % 2 === 0 ? 'bg-corallo' : 'bg-notte'
-								}`}
-							>
-								{cat.name}
-							</li>
-						))}
-					</ul>
-				)}
+			{/*
+			 * Layout 2/3 + 1/3 coerente con le pagine categoria/tag: a sinistra
+			 * l'articolo, a destra la sidebar "Ultimi commenti" + "Tag più
+			 * utilizzati". Su mobile la sidebar scende sotto l'articolo.
+			 */}
+			<div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-3">
+				<article className="lg:col-span-2">
+					{post.categories.length > 0 && (
+						<ul className="mb-3 flex flex-wrap gap-1.5">
+							{post.categories.map((cat, i) => (
+								<li
+									key={cat.id}
+									className={`px-3 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-white ${
+										i % 2 === 0 ? 'bg-corallo' : 'bg-notte'
+									}`}
+								>
+									{cat.name}
+								</li>
+							))}
+						</ul>
+					)}
 
-				<h1 className="text-4xl">{post.title}</h1>
+					<h1 className="text-4xl">{post.title}</h1>
 
-				<div className="mt-3 flex flex-wrap gap-3 text-sm text-testo-secondario">
-					{post.author && <span>{post.author.name}</span>}
-					<time dateTime={post.date}>{formattedDate}</time>
-				</div>
-
-				{/*
-				 * Il contenuto arriva dalla WP REST API del tuo stesso sito (fonte
-				 * fidata, non input di visitatori): renderlo con dangerouslySetInnerHTML
-				 * e' la pratica standard per WordPress headless. Per una protezione
-				 * aggiuntiva in profondita' si puo' filtrarlo con una libreria come
-				 * isomorphic-dompurify prima del render.
-				 *
-				 * ArticleContent (client component) intercetta anche il click sulle
-				 * immagini per aprirle in un overlay invece di navigare al file —
-				 * vedi il commento li' dentro.
-				 */}
-				<ArticleContent
-					html={post.content}
-					className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
-				/>
-
-				{post.tags.length > 0 && (
-					<ul className="mt-8 flex flex-wrap gap-2 border-t border-bordo pt-6 text-xs text-testo-secondario">
-						{post.tags.map((tag) => (
-							<li key={tag.id}>
-								<Link href={`/tag/${tag.slug}`} className="transition hover:text-teal">
-									#{tag.name}
-								</Link>
-							</li>
-						))}
-					</ul>
-				)}
-
-				{post.author?.bio && (
-					<div className="mt-8 bg-sfondo-chiaro p-5">
-						<p className="text-sm font-bold uppercase text-testo">{post.author.name}</p>
-						<p className="mt-1 text-sm">{post.author.bio}</p>
+					<div className="mt-3 flex flex-wrap gap-3 text-sm text-testo-secondario">
+						{post.author && <span>{post.author.name}</span>}
+						<time dateTime={post.date}>{formattedDate}</time>
 					</div>
-				)}
-			</article>
+
+					{/*
+					 * Il contenuto arriva dalla WP REST API del tuo stesso sito (fonte
+					 * fidata, non input di visitatori): renderlo con dangerouslySetInnerHTML
+					 * e' la pratica standard per WordPress headless. Per una protezione
+					 * aggiuntiva in profondita' si puo' filtrarlo con una libreria come
+					 * isomorphic-dompurify prima del render.
+					 *
+					 * ArticleContent (client component) intercetta anche il click sulle
+					 * immagini per aprirle in un overlay invece di navigare al file —
+					 * vedi il commento li' dentro.
+					 */}
+					<ArticleContent
+						html={post.content}
+						className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
+					/>
+
+					{post.tags.length > 0 && (
+						<ul className="mt-8 flex flex-wrap gap-2 border-t border-bordo pt-6 text-xs text-testo-secondario">
+							{post.tags.map((tag) => (
+								<li key={tag.id}>
+									<Link href={`/tag/${tag.slug}`} className="transition hover:text-teal">
+										#{tag.name}
+									</Link>
+								</li>
+							))}
+						</ul>
+					)}
+
+					{post.author?.bio && (
+						<div className="mt-8 bg-sfondo-chiaro p-5">
+							<p className="text-sm font-bold uppercase text-testo">{post.author.name}</p>
+							<p className="mt-1 text-sm">{post.author.bio}</p>
+						</div>
+					)}
+				</article>
+
+				<div className="flex flex-col gap-10">
+					<RecentComments comments={recentComments} />
+					<PopularTagsWidget tags={popularTags} />
+				</div>
+			</div>
+
+			<RelatedPosts posts={relatedPosts} />
 		</main>
 	);
 }

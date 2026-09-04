@@ -372,6 +372,52 @@ export async function getTagBySlug(slug: string): Promise<WPCategory | null> {
 }
 
 /**
+ * Widget sidebar "Tag più utilizzati" (pagine diverse dalla home): i tag con
+ * piu' articoli associati, stesso endpoint di getTagBySlug() ma ordinato per
+ * `count` decrescente. `hide_empty=1` esclude i tag rimasti senza post (es.
+ * refusi/duplicati creati per errore nel backoffice nel tempo).
+ */
+export async function getPopularTags(limit = 12): Promise<WPCategory[]> {
+	return wpFetch<WPCategory[]>(
+		`/tags?per_page=${limit}&orderby=count&order=desc&hide_empty=1&_fields=id,name,slug,count`,
+		{ tags: ['tags'] }
+	);
+}
+
+/**
+ * Blocco "Potrebbe interessarti anche" sotto ogni articolo: si cercano prima
+ * altri post della stessa categoria principale (la prima assegnata), che di
+ * solito e' il segnale piu' forte di affinita' su questo sito (es. tutte le
+ * schede di "Varieta' di Peperoncino" sono nella stessa categoria). Se
+ * l'articolo non ha categorie o non ce ne sono abbastanza altre, si
+ * completa con post che condividono il primo tag, e in ultima istanza con
+ * gli ultimi pubblicati — cosi' il blocco mostra sempre `limit` post (a
+ * meno che il sito non ne abbia proprio cosi' pochi) invece di restare vuoto
+ * o a meta'.
+ */
+export async function getRelatedPosts(post: Post, limit = 3): Promise<Post[]> {
+	const related: Post[] = [];
+	const seenIds = new Set([post.id]);
+
+	async function fillFrom(query: { categoryId?: number; tagId?: number }) {
+		if (related.length >= limit) return;
+		const { posts } = await getPosts({ ...query, perPage: limit + 1, exclude: [...seenIds] });
+		for (const p of posts) {
+			if (related.length >= limit) break;
+			if (seenIds.has(p.id)) continue;
+			related.push(p);
+			seenIds.add(p.id);
+		}
+	}
+
+	if (post.categories[0]) await fillFrom({ categoryId: post.categories[0].id });
+	if (post.tags[0]) await fillFrom({ tagId: post.tags[0].id });
+	if (related.length < limit) await fillFrom({});
+
+	return related;
+}
+
+/**
  * Barra "Post piccanti!" in cima al sito: nel tema Edition originale e' un
  * ticker verticale (bxSlider) che scorre in autoplay tra alcuni articoli in
  * evidenza, in stile "ultim'ora". Qui si usano semplicemente gli ultimi
