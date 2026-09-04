@@ -1,6 +1,10 @@
-import type { Post, PopularPostsResponse, RecentComment, WPCategory, WPComment, WPMedia, WPPost } from './types';
+import type { Post, PopularPostsResponse, PostComment, RecentComment, WPCategory, WPComment, WPMedia, WPPost } from './types';
 
-const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
+// Esportato: serve anche a app/api/comments/route.ts per inoltrare al
+// WordPress i nuovi commenti inviati dal form (stesso pattern gia' usato da
+// app/api/track-view/route.ts, che pero' ha la sua costante locale identica
+// perche' quella route esisteva prima di questa esportazione).
+export const WP_API_URL = (process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '');
 
 /**
  * Wrapper minimo su fetch con i default corretti per Next.js:
@@ -461,6 +465,44 @@ export async function getRecentComments(limit = 7): Promise<RecentComment[]> {
 				};
 			})
 			.filter((comment) => comment.postTitle !== '');
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Commenti approvati di un articolo, per la lista sotto il contenuto
+ * (vedi CommentsSection.tsx): senza autenticazione la REST API di WordPress
+ * restituisce di suo solo i commenti con stato "approved" (quelli in
+ * moderazione o rifiutati non sono mai visibili da qui), quindi non serve
+ * filtrare esplicitamente per stato — e' gia' impossibile leggerne altri.
+ *
+ * Tag dedicato `comments:${postId}` (invece del generico "comments" usato da
+ * getRecentComments) cosi' l'invio di un nuovo commento (vedi
+ * app/api/comments/route.ts) puo' invalidare solo la cache di QUESTO
+ * articolo, non quella di tutta la home.
+ */
+export async function getPostComments(postId: number, perPage = 100): Promise<PostComment[]> {
+	try {
+		const params = new URLSearchParams({
+			post: String(postId),
+			per_page: String(perPage),
+			orderby: 'date',
+			order: 'asc',
+			_fields: 'id,parent,author_name,date,content',
+		});
+		const comments = await wpFetch<WPComment[]>(`/comments?${params.toString()}`, {
+			tags: [`comments:${postId}`],
+			revalidate: 60,
+		});
+
+		return comments.map((c) => ({
+			id: c.id,
+			parentId: c.parent ?? 0,
+			authorName: decodeHtmlEntities(c.author_name || 'Anonimo'),
+			date: c.date,
+			content: c.content.rendered,
+		}));
 	} catch {
 		return [];
 	}

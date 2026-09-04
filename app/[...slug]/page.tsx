@@ -6,6 +6,7 @@ import { ArticleContent } from '@/components/ArticleContent';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
+import { CommentsSection } from '@/components/CommentsSection';
 import { PopularPostsWidget } from '@/components/PopularPostsWidget';
 import { PopularTagsWidget } from '@/components/PopularTagsWidget';
 import { RecentComments } from '@/components/RecentComments';
@@ -16,6 +17,7 @@ import {
 	getPopularPosts,
 	getPopularTags,
 	getPostBySlug,
+	getPostComments,
 	getPosts,
 	getRecentComments,
 	getRelatedPosts,
@@ -184,10 +186,11 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 
 	// Indipendenti tra loro: si eseguono insieme invece che in sequenza per
 	// non sommare i tempi di risposta (stesso pattern di ArchiveView sopra).
-	const [recentComments, popularTags, relatedPosts] = await Promise.all([
+	const [recentComments, popularTags, relatedPosts, postComments] = await Promise.all([
 		getRecentComments(7),
 		getPopularTags(12),
 		getRelatedPosts(post, 3),
+		getPostComments(post.id),
 	]);
 
 	return (
@@ -270,6 +273,8 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 							<p className="mt-1 text-sm">{post.author.bio}</p>
 						</div>
 					)}
+
+					<CommentsSection postId={post.id} comments={postComments} />
 				</article>
 
 				<div className="flex flex-col gap-10">

@@ -92,12 +92,14 @@ export interface WPCategory {
 export interface WPComment {
 	id: number;
 	post: number;
+	/** 0 se e' un commento di primo livello, altrimenti l'id del commento a cui risponde. */
+	parent?: number;
 	author_name: string;
 	date: string;
 	content: WPRendered;
 	link: string;
 	_embedded?: {
-		up?: { id: number; slug: string; link: string; title: WPRendered }[];
+		up?: { id: number; slug: string; title: WPRendered }[];
 	};
 }
 
@@ -107,6 +109,15 @@ export interface RecentComment {
 	authorName: string;
 	postTitle: string;
 	href: string;
+}
+
+/** Forma "pulita" di un commento sotto un articolo (vedi getPostComments() in lib/wp.ts). */
+export interface PostComment {
+	id: number;
+	parentId: number;
+	authorName: string;
+	date: string;
+	content: string;
 }
 
 /**
