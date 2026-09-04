@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArticleContent } from '@/components/ArticleContent';
 import { ArticleReactions } from '@/components/ArticleReactions';
+import { ArticleReactionsProvider } from '@/components/ArticleReactionsProvider';
 import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
@@ -241,32 +242,34 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 						<time dateTime={post.date}>{formattedDate}</time>
 					</div>
 
-					{/* Contatori condivisioni/commenti/love in cima all'articolo — vedi ArticleReactions.tsx. */}
-					<ArticleReactions
-						postId={post.id}
-						initialShares={post.shares}
-						initialLoves={post.loves}
-						commentsCount={postComments.length}
-					/>
-
 					{/*
-					 * Il contenuto arriva dalla WP REST API del tuo stesso sito (fonte
-					 * fidata, non input di visitatori): renderlo con dangerouslySetInnerHTML
-					 * e' la pratica standard per WordPress headless. Per una protezione
-					 * aggiuntiva in profondita' si puo' filtrarlo con una libreria come
-					 * isomorphic-dompurify prima del render.
-					 *
-					 * ArticleContent (client component) intercetta anche il click sulle
-					 * immagini per aprirle in un overlay invece di navigare al file —
-					 * vedi il commento li' dentro.
+					 * ArticleReactions (in cima) e ShareButtons (in fondo) condividono
+					 * lo stato di condivisioni/love tramite questo Provider, cosi' un
+					 * click sui pulsanti in fondo aggiorna subito il numero in alto —
+					 * vedi ArticleReactionsProvider.tsx.
 					 */}
-					<ArticleContent
-						html={post.content}
-						className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
-					/>
+					<ArticleReactionsProvider postId={post.id} initialShares={post.shares} initialLoves={post.loves}>
+						<ArticleReactions commentsCount={postComments.length} />
 
-					{/* Pulsanti di condivisione in fondo all'articolo — vedi ShareButtons.tsx. */}
-					<ShareButtons postId={post.id} title={post.title} />
+						{/*
+						 * Il contenuto arriva dalla WP REST API del tuo stesso sito (fonte
+						 * fidata, non input di visitatori): renderlo con dangerouslySetInnerHTML
+						 * e' la pratica standard per WordPress headless. Per una protezione
+						 * aggiuntiva in profondita' si puo' filtrarlo con una libreria come
+						 * isomorphic-dompurify prima del render.
+						 *
+						 * ArticleContent (client component) intercetta anche il click sulle
+						 * immagini per aprirle in un overlay invece di navigare al file —
+						 * vedi il commento li' dentro.
+						 */}
+						<ArticleContent
+							html={post.content}
+							className="prose prose-neutral mt-8 max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
+						/>
+
+						{/* Pulsanti di condivisione in fondo all'articolo — vedi ShareButtons.tsx. */}
+						<ShareButtons title={post.title} />
+					</ArticleReactionsProvider>
 
 					{post.tags.length > 0 && (
 						<ul className="mt-8 flex flex-wrap gap-2 border-t border-bordo pt-6 text-xs text-testo-secondario">

@@ -3,6 +3,7 @@
 import { ReactNode, useState } from 'react';
 import { Check, Copy, Mail } from 'lucide-react';
 import { FacebookIcon, TelegramIcon, WhatsappIcon, XIcon } from './icons';
+import { useArticleReactions } from './ArticleReactionsProvider';
 
 type Platform = {
 	key: string;
@@ -56,24 +57,15 @@ const PLATFORMS: Platform[] = [
  * corretto, qualunque sia il dominio da cui si sta visitando la pagina in
  * quel momento (anteprima *.vercel.app inclusa).
  *
- * Ogni click (comprese "copia link") registra +1 sul contatore "Condivisioni"
- * mostrato in cima all'articolo (vedi ArticleReactions.tsx) tramite
- * /api/react — fire-and-forget, un eventuale errore di rete non deve mai
- * impedire la condivisione vera e propria.
+ * `trackShare()` arriva da ArticleReactionsProvider (stesso contesto usato
+ * da ArticleReactions.tsx): aggiorna SUBITO il contatore "Condivisioni" in
+ * cima alla pagina, non solo quello salvato su WordPress — prima i due
+ * componenti non si parlavano, e il numero in alto restava fermo al valore
+ * calcolato al caricamento della pagina anche dopo un click qui in fondo.
  */
-export function ShareButtons({ postId, title }: { postId: number; title: string }) {
+export function ShareButtons({ title }: { title: string }) {
 	const [copied, setCopied] = useState(false);
-
-	function trackShare() {
-		fetch('/api/react', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ postId, type: 'share' }),
-			keepalive: true,
-		}).catch(() => {
-			// Il conteggio non e' critico per l'utente: si ignora un eventuale fallimento di rete.
-		});
-	}
+	const { trackShare } = useArticleReactions();
 
 	function handlePlatformClick(platform: Platform) {
 		trackShare();

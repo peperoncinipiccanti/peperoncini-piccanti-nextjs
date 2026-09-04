@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ReactNode } from 'react';
 import { Heart, MessageCircle, Share2 } from 'lucide-react';
+import { useArticleReactions } from './ArticleReactionsProvider';
 
 type ReactionColor = 'teal' | 'blu' | 'corallo';
 
@@ -20,6 +21,15 @@ const BADGE_COLOR: Record<ReactionColor, string> = {
  * Renderizza un <button> solo se riceve onClick (il badge "Love"), altrimenti
  * un <div> puramente informativo (Condivisioni, Commenti) — niente cursore a
  * manina ne' hover su qualcosa che non fa nulla al click.
+ *
+ * L'anteprima al passaggio del mouse (solo sul badge cliccabile, quando NON
+ * e' ancora attivo) usa un colore piu' tenue (/60 di opacita') apposta
+ * DIVERSO dal colore pieno dello stato "attivo": prima il hover e il click
+ * usavano lo stesso colore pieno, rendendo i due stati indistinguibili a
+ * colpo d'occhio — un click sembrava "non fare nulla" se il mouse restava
+ * sopra al bottone dopo aver cliccato (bug segnalato da Daniele sul "Love").
+ * `active:scale-90` da' inoltre un piccolo feedback di pressione immediato,
+ * indipendente dalla richiesta di rete.
  */
 function ReactionBadge({
 	icon,
@@ -29,7 +39,7 @@ function ReactionBadge({
 	onClick,
 	active,
 }: {
-	icon: React.ReactNode;
+	icon: ReactNode;
 	count: number;
 	label: string;
 	color: ReactionColor;
@@ -40,9 +50,11 @@ function ReactionBadge({
 		<>
 			<span className="relative">
 				<span
-					className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-testo-secondario transition sm:h-16 sm:w-16 ${
-						active ? 'border-corallo text-corallo' : 'border-bordo'
-					} ${onClick ? 'group-hover:border-corallo group-hover:text-corallo' : ''}`}
+					className={`flex h-14 w-14 items-center justify-center rounded-full border-2 transition-all duration-150 sm:h-16 sm:w-16 ${
+						active
+							? 'border-corallo text-corallo'
+							: `border-bordo text-testo-secondario ${onClick ? 'group-hover:border-corallo/60 group-hover:text-corallo/60' : ''}`
+					} ${onClick ? 'active:scale-90' : ''}`}
 				>
 					{icon}
 				</span>
@@ -65,7 +77,7 @@ function ReactionBadge({
 				type="button"
 				onClick={onClick}
 				className="group flex flex-col items-center gap-2"
-				aria-label={`${label}: ${count}, clicca per mettere ${label.toLowerCase()}`}
+				aria-label={`${label}: ${count}${active ? ' (gia\' messo)' : ', clicca per mettere ' + label.toLowerCase()}`}
 			>
 				{content}
 			</button>
@@ -73,68 +85,27 @@ function ReactionBadge({
 	}
 
 	return (
-		<div className="group flex flex-col items-center gap-2" aria-label={`${label}: ${count}`}>
+		<div className="flex flex-col items-center gap-2" aria-label={`${label}: ${count}`}>
 			{content}
 		</div>
 	);
 }
 
 /**
- * Riga di contatori in cima all'articolo: Condivisioni e Commenti sono
- * puramente informativi (il primo si aggiorna quando qualcuno usa i
- * pulsanti di ShareButtons.tsx in fondo alla pagina, il secondo e' il numero
- * reale di commenti approvati, gia' calcolato in PostView), "Love" e' invece
- * cliccabile: un click chiama /api/react (type=love) e incrementa il
- * contatore lato WordPress.
- *
- * Un voto "Love" per browser: si ricorda in localStorage se questo
- * visitatore ha gia' messo like a QUESTO articolo, per evitare click ripetuti
- * per sbaglio (non e' una protezione anti-frode, vedi commento nel plugin
- * PHP). L'aggiornamento del numero e' ottimistico (+1 subito al click) e poi
- * corretto con il valore reale tornato da WordPress.
+ * Riga di contatori in cima all'articolo: Condivisioni e Love arrivano dal
+ * contesto condiviso con ShareButtons.tsx (vedi ArticleReactionsProvider.tsx)
+ * cosi' un click sui pulsanti in fondo alla pagina aggiorna subito questi
+ * numeri, senza dover ricaricare. "Comment" resta un valore passato come
+ * prop, perche' e' il numero di commenti approvati gia' calcolato in
+ * PostView — non ha bisogno di stato condiviso, non cambia mai durante la
+ * visita di questa pagina.
  */
-export function ArticleReactions({
-	postId,
-	initialShares,
-	initialLoves,
-	commentsCount,
-}: {
-	postId: number;
-	initialShares: number;
-	initialLoves: number;
-	commentsCount: number;
-}) {
-	const [loves, setLoves] = useState(initialLoves);
-	const [loved, setLoved] = useState(false);
-
-	useEffect(() => {
-		setLoved(typeof window !== 'undefined' && localStorage.getItem(`pphc_loved_${postId}`) === '1');
-	}, [postId]);
-
-	async function handleLove() {
-		if (loved) return;
-
-		setLoved(true);
-		setLoves((n) => n + 1);
-		localStorage.setItem(`pphc_loved_${postId}`, '1');
-
-		try {
-			const res = await fetch('/api/react', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ postId, type: 'love' }),
-			});
-			const data = await res.json();
-			if (res.ok && typeof data?.count === 'number') setLoves(data.count);
-		} catch {
-			// Il "Love" resta comunque segnato localmente: non e' critico se
-			// il conteggio server-side non si aggiorna per un problema di rete.
-		}
-	}
+export function ArticleReactions({ commentsCount }: { commentsCount: number }) {
+	const { shares, loves, loved, toggleLove } = useArticleReactions();
 
 	return (
 		<div className="flex justify-center gap-8 py-6 sm:justify-start sm:gap-10">
-			<ReactionBadge icon={<Share2 size={22} />} count={initialShares} label="Share" color="teal" />
+			<ReactionBadge icon={<Share2 size={22} />} count={shares} label="Share" color="teal" />
 			<ReactionBadge icon={<MessageCircle size={22} />} count={commentsCount} label="Comment" color="blu" />
 			<ReactionBadge
 				icon={<Heart size={22} fill={loved ? 'currentColor' : 'none'} />}
@@ -142,7 +113,7 @@ export function ArticleReactions({
 				label="Love"
 				color="corallo"
 				active={loved}
-				onClick={handleLove}
+				onClick={toggleLove}
 			/>
 		</div>
 	);
