@@ -1,51 +1,9 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
-import { Check, Copy, Mail } from 'lucide-react';
-import { FacebookIcon, TelegramIcon, WhatsappIcon, XIcon } from './icons';
+import { useState } from 'react';
+import { Check, Copy } from 'lucide-react';
+import { SHARE_PLATFORMS, openSharePlatform } from './sharePlatforms';
 import { useArticleReactions } from './ArticleReactionsProvider';
-
-type Platform = {
-	key: string;
-	label: string;
-	icon: ReactNode;
-	buildUrl: (pageUrl: string, title: string) => string;
-};
-
-const PLATFORMS: Platform[] = [
-	{
-		key: 'facebook',
-		label: 'Facebook',
-		icon: <FacebookIcon size={20} />,
-		buildUrl: (pageUrl) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`,
-	},
-	{
-		key: 'whatsapp',
-		label: 'WhatsApp',
-		icon: <WhatsappIcon size={20} />,
-		buildUrl: (pageUrl, title) => `https://wa.me/?text=${encodeURIComponent(`${title} ${pageUrl}`)}`,
-	},
-	{
-		key: 'x',
-		label: 'X',
-		icon: <XIcon size={20} />,
-		buildUrl: (pageUrl, title) =>
-			`https://twitter.com/intent/tweet?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(title)}`,
-	},
-	{
-		key: 'telegram',
-		label: 'Telegram',
-		icon: <TelegramIcon size={20} />,
-		buildUrl: (pageUrl, title) =>
-			`https://t.me/share/url?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(title)}`,
-	},
-	{
-		key: 'email',
-		label: 'Email',
-		icon: <Mail size={20} />,
-		buildUrl: (pageUrl, title) => `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(pageUrl)}`,
-	},
-];
 
 /**
  * Pulsanti di condivisione in fondo all'articolo. L'URL condiviso e' sempre
@@ -58,23 +16,21 @@ const PLATFORMS: Platform[] = [
  * quel momento (anteprima *.vercel.app inclusa).
  *
  * `trackShare()` arriva da ArticleReactionsProvider (stesso contesto usato
- * da ArticleReactions.tsx): aggiorna SUBITO il contatore "Condivisioni" in
- * cima alla pagina, non solo quello salvato su WordPress — prima i due
- * componenti non si parlavano, e il numero in alto restava fermo al valore
- * calcolato al caricamento della pagina anche dopo un click qui in fondo.
+ * da ArticleReactions.tsx / ShareModal.tsx): aggiorna SUBITO il contatore
+ * "Condivisioni" in cima alla pagina, non solo quello salvato su WordPress.
+ *
+ * Resta visibile in fondo ANCHE dopo l'aggiunta del popup "Share" in cima
+ * (vedi ShareModal.tsx, che replica il comportamento del vecchio sito): chi
+ * arriva in fondo alla lettura ha un modo di condividere senza dover
+ * tornare su.
  */
 export function ShareButtons({ title }: { title: string }) {
 	const [copied, setCopied] = useState(false);
 	const { trackShare } = useArticleReactions();
 
-	function handlePlatformClick(platform: Platform) {
+	function handlePlatformClick(platform: (typeof SHARE_PLATFORMS)[number]) {
 		trackShare();
-		const url = platform.buildUrl(window.location.href, title);
-		if (platform.key === 'email') {
-			window.location.href = url;
-		} else {
-			window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
-		}
+		openSharePlatform(platform, title);
 	}
 
 	async function handleCopyLink() {
@@ -93,7 +49,7 @@ export function ShareButtons({ title }: { title: string }) {
 		<div className="my-10 border-y border-bordo py-6">
 			<p className="mb-4 text-xs font-bold uppercase tracking-wide text-testo-secondario">Condividi questo articolo</p>
 			<div className="flex flex-wrap gap-3">
-				{PLATFORMS.map((platform) => (
+				{SHARE_PLATFORMS.map((platform) => (
 					<button
 						key={platform.key}
 						type="button"
