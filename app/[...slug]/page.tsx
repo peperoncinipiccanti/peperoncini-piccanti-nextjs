@@ -248,7 +248,7 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 					 * click sui pulsanti in fondo aggiorna subito il numero in alto —
 					 * vedi ArticleReactionsProvider.tsx.
 					 */}
-					<ArticleReactionsProvider postId={post.id} initialShares={post.shares} initialLoves={post.loves}>
+					<ArticleReactionsProvider postId={post.id} slug={post.slug} initialShares={post.shares} initialLoves={post.loves}>
 						<ArticleReactions commentsCount={postComments.length} />
 
 						{/*

@@ -1,3 +1,4 @@
+import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { WP_API_URL } from '@/lib/wp';
 
@@ -10,18 +11,22 @@ import { WP_API_URL } from '@/lib/wp';
  * (badge "Love" cliccabile) e ShareButtons.tsx (click su un pulsante di
  * condivisione).
  *
- * Non invalida la cache di Next.js ad ogni click: i contatori non sono
- * critici al secondo, si aggiornano naturalmente entro l'ora (stessa finestra
- * di revalidate usata per il resto dell'articolo, vedi lib/wp.ts) invece di
- * forzare una rigenerazione della pagina ad ogni singolo click.
+ * Invalida subito la cache di QUESTO articolo (tag `post:${slug}`, lo stesso
+ * usato da getPostBySlug in lib/wp.ts) dopo un incremento riuscito: senza,
+ * il numero mostrato in cima alla pagina — per un NUOVO visitatore, non per
+ * chi ha appena cliccato, che vede gia' l'aggiornamento ottimistico lato
+ * client — sarebbe rimasto quello calcolato al momento della generazione
+ * della pagina fino alla scadenza naturale della cache (fino a un'ora).
  */
 export async function POST(request: NextRequest) {
 	let postId: number | undefined;
+	let slug: string | undefined;
 	let type: string | undefined;
 
 	try {
 		const body = await request.json();
 		postId = typeof body?.postId === 'number' ? body.postId : undefined;
+		slug = typeof body?.slug === 'string' ? body.slug : undefined;
 		type = typeof body?.type === 'string' ? body.type : undefined;
 	} catch {
 		// corpo assente o non JSON
@@ -44,6 +49,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const data = await res.json();
+		if (slug) revalidateTag(`post:${slug}`, 'max');
 		return NextResponse.json(data);
 	} catch {
 		return NextResponse.json({ error: 'WordPress non raggiungibile, riprova tra poco.' }, { status: 502 });

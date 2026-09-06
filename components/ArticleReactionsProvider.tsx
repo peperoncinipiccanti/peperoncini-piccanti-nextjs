@@ -31,11 +31,13 @@ const ReactionsContext = createContext<ReactionsContextValue | null>(null);
  */
 export function ArticleReactionsProvider({
 	postId,
+	slug,
 	initialShares,
 	initialLoves,
 	children,
 }: {
 	postId: number;
+	slug: string;
 	initialShares: number;
 	initialLoves: number;
 	children: ReactNode;
@@ -53,7 +55,11 @@ export function ArticleReactionsProvider({
 			const res = await fetch('/api/react', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ postId, type }),
+				// `slug` serve solo a invalidare la cache di QUESTO articolo (vedi
+				// app/api/react/route.ts): senza, il numero mostrato in alto
+				// resterebbe quello calcolato al caricamento della pagina fino
+				// alla scadenza naturale della cache (fino a un'ora).
+				body: JSON.stringify({ postId, slug, type }),
 				keepalive: true,
 			});
 			const data = await res.json();
