@@ -27,5 +27,9 @@
 		"postcss": "^8.4.49",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^5.7.0"
-	}
+	},
+	"browserslist": [
+		"defaults and fully supports es6-module",
+		"maintained node versions"
+	]
 }

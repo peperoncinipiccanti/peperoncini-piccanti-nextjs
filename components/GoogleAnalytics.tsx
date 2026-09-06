@@ -14,6 +14,15 @@ import Script from 'next/script';
  * ID misurazione preso da Google Analytics (Amministrazione > Stream di
  * dati > PeperonciniPiccanti.com - GA4). Configurabile via env var cosi'
  * non e' hardcoded per ambienti di test/staging futuri.
+ *
+ * strategy="lazyOnload": il PageSpeed Insights del 6/9 segnalava gtag.js
+ * come la voce singola piu' pesante di "JavaScript inutilizzato" (68,6 KiB)
+ * e tra le cause dei task piu' lunghi sul thread principale — caricato con
+ * "afterInteractive" competeva con l'idratazione della pagina proprio nella
+ * finestra critica per LCP/TBT. "lazyOnload" lo rimanda a dopo l'evento
+ * `load` del browser: le pagine viste continuano a essere tracciate
+ * correttamente (l'utente e' gia' sulla pagina da un istante in piu', non
+ * si perde l'evento), ma non compete piu' con il rendering iniziale.
  */
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? 'G-4EH3Z47ZEM';
 
@@ -22,8 +31,8 @@ export function GoogleAnalytics() {
 
 	return (
 		<>
-			<Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
-			<Script id="ga4-init" strategy="afterInteractive">
+			<Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="lazyOnload" />
+			<Script id="ga4-init" strategy="lazyOnload">
 				{`
 					window.dataLayer = window.dataLayer || [];
 					function gtag(){dataLayer.push(arguments);}
