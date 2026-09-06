@@ -3,6 +3,7 @@ import { Lato } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { getMenu } from '@/lib/wp';
 
 // next/font scarica e auto-ospita Lato in fase di build: nessuna richiesta
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	return (
 		<html lang="it" className={lato.variable}>
 			<body className="font-sans antialiased">
+				<GoogleAnalytics />
 				<Header menu={menu} />
 				{children}
 				<Footer menu={menu} />
