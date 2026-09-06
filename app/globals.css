@@ -66,6 +66,27 @@
 		conic-gradient(var(--color-teal) calc(var(--pp-rating-percent, 0) * 1%), rgba(255, 255, 255, 0.35) 0);
 }
 
+/*
+ * Anello grande del blocco "Recensione" a fine articolo (ReviewBreakdown.tsx):
+ * stessa tecnica CSS pura di .pp-rating-badge__ring sopra, ma con il "buco"
+ * centrale dello stesso colore dello sfondo chiaro della card (non nero,
+ * pensato per stare su una foto) e una traccia grigio chiaro invece che
+ * bianco trasparente, dato che qui il contesto e' un box chiaro, non
+ * un'immagine scura.
+ */
+.pp-review-ring {
+	--pp-ring-size: 8rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--pp-ring-size);
+	height: var(--pp-ring-size);
+	border-radius: 9999px;
+	background:
+		radial-gradient(closest-side, var(--color-sfondo-chiaro) 78%, transparent 79% 100%),
+		conic-gradient(var(--color-teal) calc(var(--pp-rating-percent, 0) * 1%), rgba(20, 20, 20, 0.12) 0);
+}
+
 /* ---------- Carosello hero: scroll-snap nativo, i pulsanti sono un progressive enhancement ---------- */
 .pp-hero-scroller {
 	scrollbar-width: none;

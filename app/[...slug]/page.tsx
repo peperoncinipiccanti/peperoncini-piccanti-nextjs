@@ -13,6 +13,7 @@ import { PopularPostsWidget } from '@/components/PopularPostsWidget';
 import { PopularTagsWidget } from '@/components/PopularTagsWidget';
 import { RecentComments } from '@/components/RecentComments';
 import { RelatedPosts } from '@/components/RelatedPosts';
+import { ReviewBreakdown } from '@/components/ReviewBreakdown';
 import { ShareButtons } from '@/components/ShareButtons';
 import { ViewTracker } from '@/components/ViewTracker';
 import {
@@ -275,8 +276,11 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 							className="prose prose-neutral max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
 						/>
 
-						{/* clear-both: evita che il badge "float" si sovrapponga ai pulsanti in fondo se l'articolo e' molto corto. */}
+						{/* clear-both: evita che il badge "float" si sovrapponga al blocco recensione/pulsanti sotto se l'articolo e' molto corto. */}
 						<div className="clear-both" />
+
+						{/* Blocco "Recensione" col dettaglio dei Review Criteria — solo sugli articoli marcati come review, vedi ReviewBreakdown.tsx. */}
+						<ReviewBreakdown post={post} />
 
 						{/* Pulsanti di condivisione in fondo all'articolo — vedi ShareButtons.tsx. */}
 						<ShareButtons title={post.title} />

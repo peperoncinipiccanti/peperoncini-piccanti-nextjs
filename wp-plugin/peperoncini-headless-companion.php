@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
  * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), i contatori "Condivisioni"/"Love" di ogni articolo, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
  */
@@ -65,6 +65,11 @@ function pphc_register_review_field() {
 				return array(
 					'score'    => $count > 0 ? round( $total / $count, 1 ) : null,
 					'title'    => (string) get_field( 'review_title', $post['id'] ),
+					// Aggiunto per il blocco "Recensione" a tutta larghezza nel
+					// frontend (vedi ReviewBreakdown.tsx): prima si esponeva solo
+					// punteggio/titolo/criteri per il cerchietto compatto, non il
+					// paragrafo descrittivo che li accompagna nel vecchio tema.
+					'summary'  => (string) get_field( 'review_summary', $post['id'] ),
 					'criteria' => $criteria,
 				);
 			},

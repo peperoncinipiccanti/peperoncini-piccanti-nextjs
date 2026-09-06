@@ -117,6 +117,7 @@ function normalizePost(raw: WPPost): Post {
 	// "Review Criteria" del tema Edition) ed e' null di default: cosi' le
 	// ricette (che non sono "review post") non mostrano mai il cerchio.
 	const rating = raw.pphc_review?.score ?? null;
+	const ratingIsValid = rating !== null && !Number.isNaN(rating);
 
 	const contentImage = media ? null : extractFirstImageFromContent(raw.content.rendered);
 	const bestMedia = media ? pickBestMediaUrl(media) : null;
@@ -133,7 +134,19 @@ function normalizePost(raw: WPPost): Post {
 		// davvero (embed completo), e sono le uniche a leggere post.excerpt.
 		excerpt: raw.excerpt?.rendered ?? '',
 		content: raw.content.rendered,
-		rating: rating === null || Number.isNaN(rating) ? null : rating,
+		rating: ratingIsValid ? rating : null,
+		// Stesso criterio di `rating`: solo i post marcati come review nel
+		// backoffice hanno un punteggio valido, quindi solo loro un blocco
+		// "Recensione" da mostrare (vedi ReviewBreakdown.tsx).
+		review:
+			ratingIsValid && raw.pphc_review
+				? {
+						score: rating,
+						title: raw.pphc_review.title,
+						summary: raw.pphc_review.summary,
+						criteria: raw.pphc_review.criteria,
+					}
+				: null,
 		featured: raw.is_featured === true,
 		menuOrder: raw.pphc_menu_order ?? 0,
 		featuredImage: media && bestMedia

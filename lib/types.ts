@@ -69,6 +69,8 @@ export interface WPPost {
 	pphc_review?: {
 		score: number | null;
 		title: string;
+		/** Paragrafo descrittivo della recensione (campo ACF "Review Summary"). */
+		summary: string;
 		criteria: { label: string; rating: number | null }[];
 	} | null;
 	_embedded?: {
@@ -160,6 +162,18 @@ export interface Post {
 	 * null sulle ricette e su tutto il resto: RatingBadge non si mostra.
 	 */
 	rating: number | null;
+	/**
+	 * Dati completi della recensione (punteggio, titolo, sommario, criteri
+	 * col relativo voto) per il blocco "Recensione" a fine articolo — vedi
+	 * ReviewBreakdown.tsx. null quando `rating` e' null (stesso criterio:
+	 * solo gli articoli marcati come review nel backoffice WP).
+	 */
+	review: {
+		score: number;
+		title: string;
+		summary: string;
+		criteria: { label: string; rating: number | null }[];
+	} | null;
 	/** true se marcato "Featured" nel backoffice WP (vedi Post Settings / Featured Order del tema Edition). */
 	featured: boolean;
 	/** Ordine manuale scelto in "Featured Order"; usato solo per ordinare i post con featured=true. */
