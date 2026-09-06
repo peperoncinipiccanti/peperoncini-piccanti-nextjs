@@ -84,8 +84,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CatchAllPage({ params, searchParams }: Props) {
+	// `searchParams` si legge SOLO nei rami categoria/tag qui sotto (dove
+	// serve davvero, per la paginazione `?pagina=`) e mai prima. In Next.js,
+	// leggere searchParams (o cookies()/headers()) durante il render rende
+	// l'intera route "dinamica": se lo si faceva incondizionatamente qui in
+	// cima, anche gli articoli — che non usano affatto la paginazione —
+	// finivano per non essere mai serviti dalla cache Vercel (verificato dal
+	// vivo: header `x-vercel-cache: MISS` e `cache-control: no-store` su
+	// OGNI richiesta, anche ripetuta sulla stessa pagina). Ogni visita reale
+	// rieseguiva quindi da zero la funzione serverless: e' la causa piu'
+	// probabile dell'LCP scadente segnalato da Search Console sulle pagine
+	// articolo a basso traffico (poche visite reali, ma quelle poche cadono
+	// spesso su un cold start). Rimandando la lettura qui sotto, gli
+	// articoli tornano cacheable via ISR (revalidate: 3600 in lib/wp.ts +
+	// revalidazione mirata via webhook, vedi app/api/revalidate/route.ts).
 	const { slug } = await params;
-	const { pagina } = await searchParams;
 	const target = lastSegment(slug);
 
 	const post = await getPostBySlug(target);
@@ -95,6 +108,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 
 	const category = await getCategoryBySlug(target);
 	if (category) {
+		const { pagina } = await searchParams;
 		const page = Math.max(1, Number(pagina) || 1);
 		return ArchiveView({
 			title: category.name,
@@ -111,6 +125,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 	// essere gestito esplicitamente qui.
 	const tag = await getTagBySlug(target);
 	if (tag) {
+		const { pagina } = await searchParams;
 		const page = Math.max(1, Number(pagina) || 1);
 		return ArchiveView({
 			title: tag.name,
