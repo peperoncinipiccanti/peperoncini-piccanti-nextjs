@@ -49,6 +49,27 @@ const nextConfig = {
 			},
 		],
 	},
+	// Proxy di sicurezza per il cutover DNS: moltissimi contenuti vecchi (post
+	// piu' datati, media library) hanno URL assoluti tipo
+	// "https://www.peperoncinipiccanti.com/wp-content/uploads/...", scritti nel
+	// database quando www puntava ancora a Serverplan/WordPress. Il giorno in
+	// cui www viene spostato su Vercel (questo progetto), quegli URL
+	// punterebbero altrimenti a questa stessa app Next.js, che non serve file
+	// wp-content e darebbe 404 su tantissime immagini vecchie — anche dopo un
+	// eventuale search-replace nel DB, perche' pagine gia' in cache (Google,
+	// social, browser dei visitatori) o riferimenti mai puliti resterebbero
+	// comunque rotti. Questo rewrite inoltra in modo trasparente qualsiasi
+	// richiesta /wp-content/* al backend WordPress reale (cms.*), qualunque
+	// dominio la richieda: una rete di sicurezza permanente, non solo una
+	// soluzione temporanea pre-migrazione DB.
+	async rewrites() {
+		return [
+			{
+				source: '/wp-content/:path*',
+				destination: `${(process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '')}/wp-content/:path*`,
+			},
+		];
+	},
 	// Header di sicurezza/performance di base; il caching vero e proprio delle pagine
 	// e' gestito dalla revalidation di Next (vedi lib/wp.ts e app/api/revalidate).
 	async headers() {
