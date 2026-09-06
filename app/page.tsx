@@ -10,34 +10,75 @@ import { SocialFansCounter } from '@/components/SocialFansCounter';
 import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments, getTagBySlug } from '@/lib/wp';
 import { getSocialFanCounts } from '@/lib/social';
 
+const NO_POSTS = { posts: [], totalPages: 1, total: 0 };
+
 export default async function HomePage() {
-	// Il carosello hero mostra gli articoli scelti a mano come "Featured" nel
-	// backoffice WordPress (metabox "Featured" + ordine da "Featured Order"),
-	// non semplicemente i piu' recenti — vedi getFeaturedPosts() in lib/wp.ts.
-	// Il resto della home li esclude via `exclude` cosi' nessun articolo
-	// compare due volte.
-	const heroPosts = await getFeaturedPosts(4);
+	// Prima questa funzione faceva ~11 richieste a WordPress in sequenza (un
+	// `await` dopo l'altro), sommando i relativi tempi di risposta — spiega
+	// da solo il TTFB "sul campo" di 1,7s segnalato da PageSpeed Insights.
+	// Le chiamate che non dipendono l'una dall'altra partono ora tutte
+	// insieme, in due soli "giri" invece di undici.
+	//
+	// Primo giro: tutte richieste indipendenti (nessuna ha bisogno del
+	// risultato di un'altra).
+	const [heroPosts, varietaCategory, recentComments, socialCounts, coltivareCategory, conservareTag, healthTag] =
+		await Promise.all([
+			// Il carosello hero mostra gli articoli scelti a mano come "Featured"
+			// nel backoffice WordPress (metabox "Featured" + ordine da "Featured
+			// Order"), non semplicemente i piu' recenti — vedi getFeaturedPosts()
+			// in lib/wp.ts.
+			getFeaturedPosts(4),
+			getCategoryBySlug('varieta-peperoncino'),
+			getRecentComments(7),
+			getSocialFanCounts(),
+			getCategoryBySlug('come-coltivare-peperoncino'),
+			getTagBySlug('conservare-peperoncino'),
+			getTagBySlug('salute-peperoncino'),
+		]);
+
+	// Il resto della home esclude gli articoli gia' nell'hero via `exclude`,
+	// cosi' nessun articolo compare due volte — per questo il secondo giro
+	// deve aspettare heroIds (e le categorie/tag) del primo.
 	const heroIds = heroPosts.map((p) => p.id);
 
-	// Sezione "Peperoncini Piccanti | Le mie recensioni": nel vecchio tema
-	// e' l'elenco della categoria "Varieta' di Peperoncino" (gli articoli con
-	// il punteggio a cerchio), con le freccette che scorrono il widget
-	// mostrando il gruppo successivo di 5 (1 grande + 4 piccoli) — non e' una
-	// paginazione di pagina, resta tutto in home. Si precarica quindi un
-	// blocco piu' ampio (15 = 3 "pagine" da 5) in una sola chiamata, cosi'
-	// ReviewsCarousel puo' scorrere lato client senza richieste aggiuntive al
-	// WordPress a ogni click sulle frecce. Era 20 (4 pagine): con l'embed
-	// completo di 20 post la risposta superava i 2MB e Next.js smetteva di
-	// metterla in cache (vedi anche il fields-trimming in getPosts()), 15
-	// resta abbondantemente sotto quel limite mantenendo comunque 3 pagine
-	// di contenuti da scorrere.
-	const varietaCategory = await getCategoryBySlug('varieta-peperoncino');
-	const { posts: reviews } = varietaCategory
-		? await getPosts({ perPage: 15, categoryId: varietaCategory.id, exclude: heroIds })
-		: { posts: [] };
+	// Secondo giro: dipende dagli id trovati sopra, ma le quattro chiamate
+	// sono indipendenti tra loro, quindi partono anch'esse insieme.
+	const [reviewsResult, coltivareResult, preserveResult, healthResult] = await Promise.all([
+		// Sezione "Peperoncini Piccanti | Le mie recensioni": nel vecchio tema
+		// e' l'elenco della categoria "Varieta' di Peperoncino" (gli articoli
+		// con il punteggio a cerchio), con le freccette che scorrono il widget
+		// mostrando il gruppo successivo di 5 (1 grande + 4 piccoli) — non e'
+		// una paginazione di pagina, resta tutto in home. Si precarica quindi
+		// un blocco piu' ampio (15 = 3 "pagine" da 5) in una sola chiamata,
+		// cosi' ReviewsCarousel puo' scorrere lato client senza richieste
+		// aggiuntive al WordPress a ogni click sulle frecce. Era 20 (4
+		// pagine): con l'embed completo di 20 post la risposta superava i 2MB
+		// e Next.js smetteva di metterla in cache (vedi anche il
+		// fields-trimming in getPosts()), 15 resta abbondantemente sotto quel
+		// limite mantenendo comunque 3 pagine di contenuti da scorrere.
+		varietaCategory
+			? getPosts({ perPage: 15, categoryId: varietaCategory.id, exclude: heroIds })
+			: Promise.resolve(NO_POSTS),
+		// Foto del banner "Vuoi imparare come coltivare in casa il
+		// peperoncino?" sotto: si tenta prima l'articolo piu' recente di
+		// questa categoria (stesso slug del menu).
+		coltivareCategory ? getPosts({ perPage: 1, categoryId: coltivareCategory.id }) : Promise.resolve(NO_POSTS),
+		// Sezione "Come conservare i peperoncini | I metodi piu' comuni":
+		// tutti gli articoli con il tag "conservare", non una manciata di
+		// slug scelti a mano — cosi' un nuovo articolo con quel tag compare
+		// qui automaticamente, senza dover toccare il codice ogni volta.
+		conservareTag ? getPosts({ perPage: 20, tagId: conservareTag.id }) : Promise.resolve(NO_POSTS),
+		// Blocco sidebar "Peperoncino e Salute": stesso pattern per tag di
+		// sopra, ma renderizzato da HealthCarousel (una sola card alla volta,
+		// che scorre da sola) invece che in griglia — vedi il commento li'
+		// dentro.
+		healthTag ? getPosts({ perPage: 20, tagId: healthTag.id }) : Promise.resolve(NO_POSTS),
+	]);
 
-	const recentComments = await getRecentComments(7);
-	const socialCounts = await getSocialFanCounts();
+	const reviews = reviewsResult.posts;
+	const coltivarePosts = coltivareResult.posts;
+	const preservePosts = preserveResult.posts;
+	const healthPosts = healthResult.posts;
 
 	// Banner "Vuoi imparare come coltivare in casa il peperoncino?": nel
 	// vecchio tema e' una foto a tutta larghezza con overlay nero al 35% e
@@ -48,36 +89,12 @@ export default async function HomePage() {
 	// si vede solo il grigio piatto dell'overlay senza immagine sotto: non e'
 	// il design voluto, e' un bug preesistente.
 	//
-	// Si tenta prima la foto dell'articolo piu' recente della categoria
-	// "Coltivare il Peperoncino" (stesso slug del menu); se quello slug non
-	// corrisponde a una categoria reale o e' senza articoli con immagine (da
-	// verificare quando il sito WP non e' sotto protezione traffico, per non
-	// fare ulteriori richieste ora), si ripiega sulla prima foto gia' in
+	// Se la categoria "Coltivare il Peperoncino" non corrisponde a nulla o
+	// non ha articoli con immagine, si ripiega sulla prima foto gia' in
 	// memoria dal widget "recensioni" (piante di peperoncino) — zero
 	// richieste aggiuntive al WordPress, il banner non resta mai a tinta
 	// unita se una foto e' comunque disponibile.
-	const coltivareCategory = await getCategoryBySlug('come-coltivare-peperoncino');
-	const { posts: coltivarePosts } = coltivareCategory
-		? await getPosts({ perPage: 1, categoryId: coltivareCategory.id })
-		: { posts: [] };
 	const ctaImage = coltivarePosts[0]?.featuredImage ?? reviews[0]?.featuredImage ?? null;
-
-	// Sezione "Come conservare i peperoncini | I metodi piu' comuni": tutti
-	// gli articoli con il tag "conservare", non piu' una manciata di slug
-	// scelti a mano — cosi' un nuovo articolo con quel tag compare qui
-	// automaticamente, senza dover toccare il codice ogni volta.
-	const conservareTag = await getTagBySlug('conservare-peperoncino');
-	const { posts: preservePosts } = conservareTag
-		? await getPosts({ perPage: 20, tagId: conservareTag.id })
-		: { posts: [] };
-
-	// Blocco sidebar "Peperoncino e Salute": stesso pattern per tag di sopra,
-	// ma renderizzato da HealthCarousel (una sola card alla volta, che scorre
-	// da sola) invece che in griglia — vedi il commento li' dentro.
-	const healthTag = await getTagBySlug('salute-peperoncino');
-	const { posts: healthPosts } = healthTag
-		? await getPosts({ perPage: 20, tagId: healthTag.id })
-		: { posts: [] };
 
 	return (
 		<main id="top">
