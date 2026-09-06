@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
  * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), i contatori "Condivisioni"/"Love" di ogni articolo, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
  */
@@ -365,8 +365,10 @@ function pphc_track_view( WP_REST_Request $request ) {
 /**
  * ------------------------------------------------------------------
  * Contatori "Condivisioni" e "Love" mostrati in cima ad ogni articolo —
- * salvati come normali post meta (`pphc_share_count`, `pphc_love_count`),
- * NON collegati a nessuna API di conteggio condivisioni di Facebook/Twitter:
+ * salvati nei post meta storici del vecchio tema Edition (`shares_count`,
+ * `votes_count`: trovati ispezionando i dati reali e confrontandoli con gli
+ * screenshot del vecchio sito, numeri alla mano), NON collegati a nessuna
+ * API di conteggio condivisioni di Facebook/Twitter:
  * quegli endpoint pubblici sono stati dismessi da anni, oggi nessun social
  * espone piu' "quante volte e' stato condiviso" un URL, ne' per un sito
  * headless ne' per uno tradizionale. Il numero rappresenta quindi quante
@@ -393,11 +395,19 @@ function pphc_register_reaction_fields() {
 		'post',
 		'pphc_shares',
 		array(
+			// 'shares_count' e' il campo del VECCHIO tema (Edition): trovato
+			// ispezionando i post meta di un articolo con l'endpoint temporaneo
+			// un endpoint temporaneo di ispezione (usato una volta, poi rimosso)
+			// e confrontando i numeri con lo screenshot del vecchio sito
+			// (Habanero Orange: 6 condivisioni, combaciava esattamente). Si
+			// riusa direttamente quel campo, invece di ripartire da un contatore
+			// nuovo a zero: cosi' lo storico resta e continua ad accumularsi da
+			// dove era rimasto, senza bisogno di nessuna migrazione separata.
 			'get_callback' => function ( $post ) {
-				return (int) get_post_meta( $post['id'], 'pphc_share_count', true );
+				return (int) get_post_meta( $post['id'], 'shares_count', true );
 			},
 			'schema'       => array(
-				'description' => __( 'Numero di volte in cui un visitatore ha cliccato un pulsante di condivisione su questo articolo.', 'peperoncini-headless' ),
+				'description' => __( 'Numero di condivisioni di questo articolo (campo storico del vecchio tema, "shares_count").', 'peperoncini-headless' ),
 				'type'        => 'integer',
 				'context'     => array( 'view' ),
 			),
@@ -408,11 +418,14 @@ function pphc_register_reaction_fields() {
 		'post',
 		'pphc_loves',
 		array(
+			// Stesso discorso di sopra: 'votes_count' e' il campo che il vecchio
+			// tema usava per i "Love" (confermato: Habanero Orange aveva 80
+			// "votes_count", lo stesso numero del vecchio widget "LOVE").
 			'get_callback' => function ( $post ) {
-				return (int) get_post_meta( $post['id'], 'pphc_love_count', true );
+				return (int) get_post_meta( $post['id'], 'votes_count', true );
 			},
 			'schema'       => array(
-				'description' => __( 'Numero di "Love" ricevuti da questo articolo.', 'peperoncini-headless' ),
+				'description' => __( 'Numero di "Love" ricevuti da questo articolo (campo storico del vecchio tema, "votes_count").', 'peperoncini-headless' ),
 				'type'        => 'integer',
 				'context'     => array( 'view' ),
 			),
@@ -449,11 +462,15 @@ function pphc_handle_reaction( WP_REST_Request $request ) {
 		return new WP_Error( 'pphc_invalid_post', 'Post non valido.', array( 'status' => 400 ) );
 	}
 
+	// Stessi campi storici del vecchio tema letti sopra in
+	// pphc_register_reaction_fields() — cosi' lettura e scrittura restano
+	// sempre sullo stesso numero, invece di avere un contatore "vecchio" (di
+	// sola lettura) e uno "nuovo" (che riparte da zero) scollegati tra loro.
 	$meta_key = null;
 	if ( 'share' === $type ) {
-		$meta_key = 'pphc_share_count';
+		$meta_key = 'shares_count';
 	} elseif ( 'love' === $type ) {
-		$meta_key = 'pphc_love_count';
+		$meta_key = 'votes_count';
 	}
 
 	if ( ! $meta_key ) {
@@ -466,52 +483,6 @@ function pphc_handle_reaction( WP_REST_Request $request ) {
 	return array(
 		'type'  => $type,
 		'count' => $new_value,
-	);
-}
-
-/**
- * ------------------------------------------------------------------
- * TEMPORANEO — da rimuovere una volta trovato il campo giusto: elenca TUTTI
- * i post meta salvati su un articolo, per scoprire con che nome il vecchio
- * tema salvava i contatori "Condivisioni"/"Love" prima della migrazione a
- * questo plugin (che ne usa uno nuovo, pphc_share_count/pphc_love_count,
- * partito da zero). Protetta da un token fisso scritto qui nel codice — non
- * e' un vero segreto (i numeri che espone non sono dati sensibili, solo
- * contatori), serve solo a non lasciarla scopribile per caso.
- *
- * Uso: GET /wp-json/pphc/v1/inspect-meta?postId=123&token=pphc-inspect-7f2a
- * ------------------------------------------------------------------
- */
-function pphc_register_inspect_meta_route() {
-	register_rest_route(
-		'pphc/v1',
-		'/inspect-meta',
-		array(
-			'methods'             => 'GET',
-			'callback'            => 'pphc_inspect_meta',
-			'permission_callback' => '__return_true',
-		)
-	);
-}
-add_action( 'rest_api_init', 'pphc_register_inspect_meta_route' );
-
-function pphc_inspect_meta( WP_REST_Request $request ) {
-	if ( 'pphc-inspect-7f2a' !== $request->get_param( 'token' ) ) {
-		return new WP_Error( 'pphc_forbidden', 'Token mancante o errato.', array( 'status' => 403 ) );
-	}
-
-	$post_id = (int) $request->get_param( 'postId' );
-	if ( ! $post_id || ! get_post( $post_id ) ) {
-		return new WP_Error( 'pphc_invalid_post', 'Post non valido.', array( 'status' => 400 ) );
-	}
-
-	// get_post_meta() senza il terzo argomento ritorna TUTTI i meta del post,
-	// gia' raggruppati per chiave — esattamente come li vedresti nel pannello
-	// "Campi personalizzati" dell'editor classico di WordPress.
-	return array(
-		'post_id' => $post_id,
-		'title'   => get_the_title( $post_id ),
-		'meta'    => get_post_meta( $post_id ),
 	);
 }
 
