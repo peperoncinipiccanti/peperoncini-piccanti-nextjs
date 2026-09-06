@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Peperoncini Piccanti – Companion Headless
  * Description: Piccolo plugin, indipendente dal tema attivo, che rende WordPress pronto a fare da backend headless per il frontend Next.js: espone in REST il punteggio review (media dei "Review Criteria" del tema), il flag "Featured"/ordine per lo slider hero, il widget "post piu' visti" (Week/Month/All Time, compatibile con la tabella dati di "WP Most Popular"), i contatori "Condivisioni"/"Love" di ogni articolo, e avvisa Next.js (webhook di revalidazione) quando un articolo viene pubblicato o aggiornato. Va installato sul WordPress che fa da CMS/API, non sul frontend.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Daniele
  * Text Domain: peperoncini-headless
  */
@@ -466,6 +466,52 @@ function pphc_handle_reaction( WP_REST_Request $request ) {
 	return array(
 		'type'  => $type,
 		'count' => $new_value,
+	);
+}
+
+/**
+ * ------------------------------------------------------------------
+ * TEMPORANEO — da rimuovere una volta trovato il campo giusto: elenca TUTTI
+ * i post meta salvati su un articolo, per scoprire con che nome il vecchio
+ * tema salvava i contatori "Condivisioni"/"Love" prima della migrazione a
+ * questo plugin (che ne usa uno nuovo, pphc_share_count/pphc_love_count,
+ * partito da zero). Protetta da un token fisso scritto qui nel codice — non
+ * e' un vero segreto (i numeri che espone non sono dati sensibili, solo
+ * contatori), serve solo a non lasciarla scopribile per caso.
+ *
+ * Uso: GET /wp-json/pphc/v1/inspect-meta?postId=123&token=pphc-inspect-7f2a
+ * ------------------------------------------------------------------
+ */
+function pphc_register_inspect_meta_route() {
+	register_rest_route(
+		'pphc/v1',
+		'/inspect-meta',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'pphc_inspect_meta',
+			'permission_callback' => '__return_true',
+		)
+	);
+}
+add_action( 'rest_api_init', 'pphc_register_inspect_meta_route' );
+
+function pphc_inspect_meta( WP_REST_Request $request ) {
+	if ( 'pphc-inspect-7f2a' !== $request->get_param( 'token' ) ) {
+		return new WP_Error( 'pphc_forbidden', 'Token mancante o errato.', array( 'status' => 403 ) );
+	}
+
+	$post_id = (int) $request->get_param( 'postId' );
+	if ( ! $post_id || ! get_post( $post_id ) ) {
+		return new WP_Error( 'pphc_invalid_post', 'Post non valido.', array( 'status' => 400 ) );
+	}
+
+	// get_post_meta() senza il terzo argomento ritorna TUTTI i meta del post,
+	// gia' raggruppati per chiave — esattamente come li vedresti nel pannello
+	// "Campi personalizzati" dell'editor classico di WordPress.
+	return array(
+		'post_id' => $post_id,
+		'title'   => get_the_title( $post_id ),
+		'meta'    => get_post_meta( $post_id ),
 	);
 }
 
