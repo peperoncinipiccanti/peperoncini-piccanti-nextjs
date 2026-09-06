@@ -22,14 +22,6 @@ export function ReviewBreakdown({ post }: { post: Post }) {
 	const percent = Math.round((clamped / 10) * 100);
 	const scoreLabel = Number.isInteger(clamped) ? String(clamped) : clamped.toFixed(1);
 
-	// Il campo WordPress arriva come testo libero con un concetto per riga,
-	// separato da una riga vuota (stesso formato del vecchio tema) — si
-	// spezza in paragrafi invece di mostrarlo come un unico blocco compatto.
-	const summaryParagraphs = review.summary
-		.split(/\r?\n\s*\r?\n/)
-		.map((p) => p.trim())
-		.filter(Boolean);
-
 	return (
 		<div className="my-10">
 			<h2 className="mb-4 flex flex-wrap items-baseline gap-2 text-lg">
@@ -55,12 +47,20 @@ export function ReviewBreakdown({ post }: { post: Post }) {
 
 					{review.title && <p className="mt-4 text-xl font-bold text-testo">{review.title}</p>}
 
-					{summaryParagraphs.length > 0 && (
-						<div className="mt-3 flex max-w-xl flex-col gap-3 text-testo-secondario">
-							{summaryParagraphs.map((paragraph, i) => (
-								<p key={i}>{paragraph}</p>
-							))}
-						</div>
+					{/*
+					 * "Review Summary" e' un campo WYSIWYG in WordPress: il valore
+					 * arriva gia' come HTML (paragrafi <p> ecc.), non testo semplice —
+					 * va renderizzato con dangerouslySetInnerHTML come il contenuto
+					 * dell'articolo (ArticleContent.tsx), altrimenti i tag comparivano
+					 * scritti alla lettera invece di formattare il testo (bug segnalato
+					 * da Daniele). Fonte fidata: arriva dalla REST API del nostro
+					 * stesso WordPress, non da un input di visitatori.
+					 */}
+					{review.summary && (
+						<div
+							className="prose prose-sm prose-neutral mt-3 max-w-xl text-testo-secondario"
+							dangerouslySetInnerHTML={{ __html: review.summary }}
+						/>
 					)}
 				</div>
 
