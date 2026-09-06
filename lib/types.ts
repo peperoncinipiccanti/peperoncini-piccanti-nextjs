@@ -153,6 +153,8 @@ export interface Post {
 	slug: string;
 	link: string;
 	date: string;
+	/** Data ultima modifica (per `dateModified` in schema.org/Article, vedi lib/schema.ts). Assente sulle risposte che non includono `modified` (es. getPosts(), che non lo richiede via `_fields`): in quel caso normalizePost() ripiega su `date`. */
+	modified: string;
 	title: string;
 	excerpt: string;
 	content: string;

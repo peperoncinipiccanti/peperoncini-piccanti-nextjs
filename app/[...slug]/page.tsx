@@ -9,6 +9,7 @@ import { PostCard } from '@/components/PostCard';
 import { Pagination } from '@/components/Pagination';
 import { RatingBadge } from '@/components/RatingBadge';
 import { CommentsSection } from '@/components/CommentsSection';
+import { JsonLd } from '@/components/JsonLd';
 import { PopularPostsWidget } from '@/components/PopularPostsWidget';
 import { PopularTagsWidget } from '@/components/PopularTagsWidget';
 import { RecentComments } from '@/components/RecentComments';
@@ -16,6 +17,7 @@ import { RelatedPosts } from '@/components/RelatedPosts';
 import { ReviewBreakdown } from '@/components/ReviewBreakdown';
 import { ShareButtons } from '@/components/ShareButtons';
 import { ViewTracker } from '@/components/ViewTracker';
+import { articleSchema, breadcrumbSchema, reviewSchema } from '@/lib/schema';
 import {
 	getCategoryBySlug,
 	getPopularPosts,
@@ -157,6 +159,7 @@ async function ArchiveView({
 
 	return (
 		<main className="mx-auto max-w-6xl px-4 py-14">
+			<JsonLd data={breadcrumbSchema([{ name: 'Home', path: '/' }, { name: title, path: basePath }])} />
 			<h1 className="text-3xl">{title}</h1>
 			{description && <p className="mt-2 max-w-2xl text-testo-secondario">{description}</p>}
 
@@ -197,8 +200,17 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 		getPostComments(post.id),
 	]);
 
+	// Slug piatti e univoci su questo sito (vedi il commento su lastSegment()
+	// in cima al file): il percorso reale dell'articolo e' sempre `/<slug>`,
+	// a prescindere da eventuali categorie annidate.
+	const postPath = `/${post.slug}`;
+	const review = reviewSchema(post, postPath);
+
 	return (
 		<main>
+			<JsonLd data={breadcrumbSchema([{ name: 'Home', path: '/' }, { name: post.title, path: postPath }])} />
+			<JsonLd data={articleSchema(post, postPath)} />
+			{review && <JsonLd data={review} />}
 			<ViewTracker postId={post.id} />
 			{post.featuredImage && (
 				<div className="relative isolate aspect-[21/9] w-full overflow-hidden">

@@ -127,6 +127,7 @@ function normalizePost(raw: WPPost): Post {
 		slug: raw.slug,
 		link: raw.link,
 		date: raw.date,
+		modified: raw.modified ?? raw.date,
 		title: decodeHtmlEntities(raw.title.rendered),
 		// `excerpt` non e' richiesto da getPosts() (vedi `_fields` sopra: le
 		// pagine "elenco" non lo usano) — opzionale a runtime, da qui il

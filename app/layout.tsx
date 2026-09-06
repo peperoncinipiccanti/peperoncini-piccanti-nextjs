@@ -4,7 +4,10 @@ import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import { JsonLd } from '@/components/JsonLd';
 import { getMenu } from '@/lib/wp';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { websiteSchema } from '@/lib/schema';
 
 // next/font scarica e auto-ospita Lato in fase di build: nessuna richiesta
 // a fonts.googleapis.com a runtime, font-display "swap" automatico, zero CLS.
@@ -16,10 +19,8 @@ const lato = Lato({
 	display: 'swap',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.peperoncinipiccanti.com';
-
 export const metadata: Metadata = {
-	metadataBase: new URL(siteUrl),
+	metadataBase: new URL(SITE_URL),
 	title: {
 		default: 'Peperoncini Piccanti - PeperonciniPiccanti.com',
 		template: '%s · PeperonciniPiccanti.com',
@@ -29,11 +30,11 @@ export const metadata: Metadata = {
 	openGraph: {
 		type: 'website',
 		locale: 'it_IT',
-		siteName: 'PeperonciniPiccanti.com',
+		siteName: SITE_NAME,
 	},
 	alternates: {
 		types: {
-			'application/rss+xml': `${siteUrl}/feed.xml`,
+			'application/rss+xml': `${SITE_URL}/feed.xml`,
 		},
 	},
 };
@@ -44,6 +45,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	return (
 		<html lang="it" className={lato.variable}>
 			<body className="font-sans antialiased">
+				{/* Organization + WebSite: identita' del sito valida su ogni pagina, vedi lib/schema.ts. */}
+				<JsonLd data={websiteSchema()} />
 				<GoogleAnalytics />
 				<Header menu={menu} />
 				{children}
