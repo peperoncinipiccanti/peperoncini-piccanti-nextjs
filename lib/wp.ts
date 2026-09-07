@@ -79,6 +79,36 @@ function extractFirstImageFromContent(html: string): { url: string; alt: string;
 }
 
 /**
+ * L'attributo `sizes` che WordPress scrive sulle `<img>` del corpo articolo
+ * assume che l'immagine resti stretta quanto il file originariamente
+ * inserito in redazione (tipicamente "300px") — ma il tema la fa invece
+ * espandere alla piena larghezza della colonna dell'articolo (classe
+ * "prose-img:w-full" in ArticleContent, vedi app/[...slug]/page.tsx): fino a
+ * ~700px su desktop (colonna 2/3 di un contenitore max-w-6xl), quasi tutta
+ * la larghezza dello schermo su mobile. Fidandosi del "sizes" originale
+ * (pensato per ~300px) il browser sceglie spesso dallo `srcset` un file
+ * molto piu' piccolo di quanto serve, oppure — come misurato dal vivo con
+ * PageSpeed Insights su /naga-morich/ — un file molto piu' grande del
+ * necessario quando quell'euristica va storta: fino a 178 KiB sprecati in
+ * tre sole immagini su una pagina.
+ *
+ * Si corregge solo la parte "fallback" (quella usata prima che il layout
+ * sia noto, o dai browser senza supporto a `sizes="auto"`): se WordPress ha
+ * gia' anteposto "auto," (introdotto per le immagini con `loading="lazy"`,
+ * che una volta note le dimensioni finali usano quelle) lo si lascia
+ * intatto, sostituendo solo cio' che segue la virgola.
+ */
+const CONTENT_IMAGE_SIZES_FALLBACK = '(min-width: 1024px) 700px, calc(100vw - 32px)';
+
+function fixContentImageSizes(html: string): string {
+	return html.replace(/(<img\b[^>]*\bsizes=")([^"]*)(")/gi, (_match, before, value, after) => {
+		const hasAuto = /^\s*auto\s*,/i.test(value);
+		const newValue = hasAuto ? `auto, ${CONTENT_IMAGE_SIZES_FALLBACK}` : CONTENT_IMAGE_SIZES_FALLBACK;
+		return `${before}${newValue}${after}`;
+	});
+}
+
+/**
  * Sceglie l'URL migliore per un'immagine in evidenza: su questo sito, per
  * molte foto caricate anni fa, il file "full" a piena risoluzione non esiste
  * piu' sul server (restano solo le varianti ridimensionate generate da WP),
@@ -134,7 +164,7 @@ function normalizePost(raw: WPPost): Post {
 		// fallback: solo getPostBySlug()/getFeaturedPosts() lo popolano
 		// davvero (embed completo), e sono le uniche a leggere post.excerpt.
 		excerpt: raw.excerpt?.rendered ?? '',
-		content: raw.content.rendered,
+		content: fixContentImageSizes(raw.content.rendered),
 		rating: ratingIsValid ? rating : null,
 		// Stesso criterio di `rating`: solo i post marcati come review nel
 		// backoffice hanno un punteggio valido, quindi solo loro un blocco
