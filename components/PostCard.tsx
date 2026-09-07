@@ -49,6 +49,10 @@ export function PostCard({
 						alt={post.featuredImage.alt}
 						fill
 						priority={priority}
+						// Vedi il commento in HeroCarousel.tsx: da Next.js 16 `priority`
+						// non imposta piu' da solo `fetchpriority="high"`, va aggiunto
+						// esplicitamente.
+						fetchPriority={priority ? 'high' : undefined}
 						sizes={isLarge ? '(min-width: 1024px) 66vw, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'}
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
 					/>

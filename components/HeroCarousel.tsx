@@ -88,6 +88,14 @@ export function HeroCarousel({ posts }: { posts: Post[] }) {
 								alt={post.featuredImage.alt}
 								fill
 								priority={i === 0}
+								// Da Next.js 16, `priority` da solo salta piu' la lazy-load e
+								// aggiunge il <link rel="preload">, ma NON imposta piu' da solo
+								// `fetchpriority="high"` sull'<img> (verificato leggendo
+								// get-img-props.js del pacchetto installato: sono due prop
+								// ormai indipendenti). Senza questo, PageSpeed Insights segnala
+								// "fetchpriority=high deve essere applicato" proprio su questa
+								// immagine (e' lei l'elemento LCP della home).
+								fetchPriority={i === 0 ? 'high' : undefined}
 								sizes="100vw"
 								className="object-cover"
 							/>

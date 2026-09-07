@@ -69,6 +69,9 @@ export async function Header({ menu }: { menu: MenuItem[] }) {
 						width={1001}
 						height={126}
 						priority
+						// Vedi il commento equivalente in HeroCarousel.tsx: da Next.js 16
+						// `priority` non imposta piu' da solo `fetchpriority="high"`.
+						fetchPriority="high"
 						className="h-10 w-auto sm:h-12"
 					/>
 				</Link>

@@ -234,6 +234,9 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 						alt={post.featuredImage.alt}
 						fill
 						priority
+						// Vedi il commento in HeroCarousel.tsx: da Next.js 16 `priority`
+						// non imposta piu' da solo `fetchpriority="high"`.
+						fetchPriority="high"
 						sizes="100vw"
 						className="object-cover"
 					/>
