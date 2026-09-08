@@ -57,18 +57,40 @@ export function ReviewsCarousel({ posts }: { posts: Post[] }) {
 
 			{featured && (
 				<div className="mb-6">
-					<PostCard post={featured} size="large" priority={page === 0} />
+					{/*
+					 * Card a piena larghezza della colonna 2/3 (non 66vw/100vw
+					 * del viewport: sotto lg e' impilata a piena larghezza
+					 * pagina dentro max-w-6xl, da lg in su e' 2/3 di quella
+					 * larghezza — vedi la griglia in app/page.tsx). "700px" e'
+					 * la larghezza reale a schermi larghi, dove max-w-6xl
+					 * limita la colonna anche se il viewport cresce oltre.
+					 */}
+					<PostCard
+						post={featured}
+						size="large"
+						priority={page === 0}
+						sizes="(min-width: 1024px) 700px, calc(100vw - 32px)"
+					/>
 				</div>
 			)}
 
 			{/*
-			 * 2 per riga: essendo questa colonna solo 2/3 della larghezza
-			 * pagina, 4 per riga rendeva le card troppo strette — titolo
-			 * sovrapposto e foto schiacciata.
+			 * 2 per riga SEMPRE (anche sotto "sm", a differenza delle griglie
+			 * di archivio/ricerca): essendo questa colonna solo 2/3 della
+			 * larghezza pagina, 4 per riga rendeva le card troppo strette —
+			 * titolo sovrapposto e foto schiacciata. "sizes" riflette quindi
+			 * sempre meta' colonna, non meta'/intero viewport come nel default
+			 * di PostCard (pensato per altre griglie) — PageSpeed segnalava
+			 * immagini scaricate fino al doppio del necessario per questo
+			 * disallineamento.
 			 */}
 			<div className="grid grid-cols-2 gap-6">
 				{rest.map((post) => (
-					<PostCard key={post.id} post={post} />
+					<PostCard
+						key={post.id}
+						post={post}
+						sizes="(min-width: 1024px) 320px, calc(50vw - 28px)"
+					/>
 				))}
 			</div>
 		</div>

@@ -60,7 +60,7 @@ export function HealthCarousel({ posts }: { posts: Post[] }) {
 				>
 					{posts.map((post) => (
 						<div key={post.id} className="w-full flex-none snap-start">
-							<PostCard post={post} mobileSquareImage />
+							<PostCard post={post} mobileSquareImage sizes="(min-width: 1024px) 340px, calc(100vw - 32px)" />
 						</div>
 					))}
 				</div>

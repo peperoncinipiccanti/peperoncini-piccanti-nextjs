@@ -25,11 +25,24 @@ export function PostCard({
 	priority = false,
 	size = 'default',
 	mobileSquareImage = false,
+	sizes,
 }: {
 	post: Post;
 	priority?: boolean;
 	size?: 'default' | 'large';
 	mobileSquareImage?: boolean;
+	/**
+	 * PostCard e' usata in griglie diverse (2 colonne fisse in
+	 * ReviewsCarousel, 1/2 colonne in archivio e ricerca, 1/3 in
+	 * RelatedPosts), ognuna con una larghezza reale della card diversa allo
+	 * stesso breakpoint. Il valore di default sotto e' una stima "media" tra
+	 * questi casi (corretta solo per il vecchio, unico contesto in cui era
+	 * usata) — i chiamanti che conoscono la propria griglia passano un
+	 * `sizes` piu' preciso, per non far scaricare a next/image un'immagine
+	 * piu' grande di quanto serva davvero (PageSpeed Insights segnalava fino
+	 * a ~94 KiB sprecati per questo).
+	 */
+	sizes?: string;
 }) {
 	const isLarge = size === 'large';
 	const imageAspect = isLarge
@@ -53,7 +66,7 @@ export function PostCard({
 						// non imposta piu' da solo `fetchpriority="high"`, va aggiunto
 						// esplicitamente.
 						fetchPriority={priority ? 'high' : undefined}
-						sizes={isLarge ? '(min-width: 1024px) 66vw, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw'}
+						sizes={sizes ?? (isLarge ? '(min-width: 1024px) 66vw, 100vw' : '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw')}
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
 					/>
 				) : (

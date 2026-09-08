@@ -59,9 +59,14 @@ export default async function SearchPage({ searchParams }: Props) {
 			 */}
 			<div className="mt-6 grid gap-10 lg:grid-cols-3">
 				<div className="lg:col-span-2">
+					{/* Stessa griglia (e stesso "sizes") dell'archivio categoria/tag: vedi il commento in app/[...slug]/page.tsx. */}
 					<div className="grid gap-6 sm:grid-cols-2">
 						{posts.map((post) => (
-							<PostCard key={post.id} post={post} />
+							<PostCard
+								key={post.id}
+								post={post}
+								sizes="(min-width: 1024px) 320px, (min-width: 640px) calc(50vw - 28px), calc(100vw - 32px)"
+							/>
 						))}
 					</div>
 

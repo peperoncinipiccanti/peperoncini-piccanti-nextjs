@@ -180,9 +180,19 @@ async function ArchiveView({
 
 			<div className="mt-8 grid gap-10 lg:grid-cols-3">
 				<div className="lg:col-span-2">
+					{/*
+					 * 1 colonna sotto "sm", 2 da "sm" in su, dentro la colonna
+					 * 2/3 della griglia (lg:col-span-2, max-w-6xl): da lg in su
+					 * la card e' quindi meta' di ~2/3 pagina (~320px), non
+					 * meta'/intero viewport come nel default di PostCard.
+					 */}
 					<div className="grid gap-6 sm:grid-cols-2">
 						{posts.map((p) => (
-							<PostCard key={p.id} post={p} />
+							<PostCard
+								key={p.id}
+								post={p}
+								sizes="(min-width: 1024px) 320px, (min-width: 640px) calc(50vw - 28px), calc(100vw - 32px)"
+							/>
 						))}
 					</div>
 
