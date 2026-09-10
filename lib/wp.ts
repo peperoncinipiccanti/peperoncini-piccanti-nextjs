@@ -486,8 +486,12 @@ export async function getTickerPosts(limit = 6): Promise<{ id: number; title: st
  * del tema, quindi non richiede un plugin companion ne' di indovinare campi
  * custom. Con `_embed=1` WordPress include il post commentato nella
  * relazione "up" (`_embedded.up[0]`), da cui si prende il titolo per la
- * scritta "Autore su Titolo articolo"; `link` punta gia' al commento sulla
- * pagina dell'articolo (stesso comportamento del widget originale).
+ * scritta "Autore su Titolo articolo" e lo slug per ricostruire l'URL del
+ * commento SUL FRONTEND Next.js (`/slug#comment-id`): il campo `link` del
+ * commento, cosi' come arriva da WordPress, punta invece sempre al dominio
+ * del CMS (`cms.peperoncinipiccanti.com`), ora in noindex — usarlo
+ * direttamente farebbe linkare dal sito live a una copia deindicizzata
+ * della stessa pagina invece che alla pagina vera.
  *
  * Alcuni siti disabilitano questo endpoint via plugin di sicurezza (per
  * evitare scraping/spam sui commenti): in quel caso si ritorna un array
@@ -507,7 +511,7 @@ export async function getRecentComments(limit = 7): Promise<RecentComment[]> {
 					id: comment.id,
 					authorName: decodeHtmlEntities(comment.author_name || 'Anonimo'),
 					postTitle: post ? decodeHtmlEntities(post.title.rendered) : '',
-					href: comment.link,
+					href: post ? `/${post.slug}#comment-${comment.id}` : comment.link,
 				};
 			})
 			.filter((comment) => comment.postTitle !== '');

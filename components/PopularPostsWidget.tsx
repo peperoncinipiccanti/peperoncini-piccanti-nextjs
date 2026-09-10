@@ -73,15 +73,21 @@ export function PopularPostsWidget({
 				<ul className="mt-4 flex flex-col gap-4">
 					{posts.map((post, i) => (
 						<li key={post.id} className="flex items-center gap-3">
+							{/*
+							 * Link a "/slug" (frontend Next.js), non "post.link": quel
+							 * campo arriva dalla route custom del plugin companion e
+							 * punta al dominio del CMS (ora in noindex, vedi il commento
+							 * su getRecentComments() in lib/wp.ts per lo stesso problema).
+							 */}
 							<span className="w-5 flex-none text-center text-lg font-black text-bordo">{i + 1}</span>
-							<Link href={post.link} className="relative aspect-square w-16 flex-none overflow-hidden bg-sfondo-chiaro">
+							<Link href={`/${post.slug}`} className="relative aspect-square w-16 flex-none overflow-hidden bg-sfondo-chiaro">
 								{post.thumbnail && (
 									<Image src={post.thumbnail} alt="" fill sizes="64px" className="object-cover" />
 								)}
 							</Link>
 							<div className="min-w-0 flex-1">
 								<Link
-									href={post.link}
+									href={`/${post.slug}`}
 									className="line-clamp-2 text-sm font-bold leading-snug text-testo transition hover:text-teal"
 								>
 									{post.title}
