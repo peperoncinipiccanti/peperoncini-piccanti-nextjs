@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/rating-badge",
+	"title": "Badge Piccantezza",
+	"category": "widgets",
+	"description": "Mostra il livello di piccantezza (0-10) impostato nei Campi personalizzati dell'articolo come anello circolare, senza JavaScript o librerie esterne.",
+	"textdomain": "peperoncini-piccanti",
+	"usesContext": [ "postId" ],
+	"supports": {
+		"html": false,
+		"align": false,
+		"color": false
+	},
+	"render": "file:./render.php"
+}

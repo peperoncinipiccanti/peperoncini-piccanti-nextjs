@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/reviews-carousel",
+	"title": "Carosello Recensioni",
+	"category": "widgets",
+	"description": "Widget \"Le mie recensioni\": 1 articolo grande + 4 piccoli della categoria scelta, con frecce che scorrono al gruppo successivo senza ricaricare la pagina.",
+	"textdomain": "peperoncini-piccanti",
+	"supports": { "html": false, "align": true },
+	"attributes": {
+		"categorySlug": { "type": "string", "default": "varieta-peperoncino" },
+		"heading": { "type": "string", "default": "Peperoncini Piccanti | Le mie recensioni" },
+		"limit": { "type": "number", "default": 15 }
+	},
+	"render": "file:./render.php"
+}

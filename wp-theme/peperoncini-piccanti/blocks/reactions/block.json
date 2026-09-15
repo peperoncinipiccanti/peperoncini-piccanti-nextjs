@@ -1,0 +1,12 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/reactions",
+	"title": "Reazioni articolo (Share/Commenti/Love)",
+	"category": "widgets",
+	"description": "Colonna di badge Share/Commenti/Love in cima all'articolo, con contatori letti dai post meta storici del tema Edition (shares_count, votes_count).",
+	"textdomain": "peperoncini-piccanti",
+	"usesContext": [ "postId" ],
+	"supports": { "html": false },
+	"render": "file:./render.php"
+}

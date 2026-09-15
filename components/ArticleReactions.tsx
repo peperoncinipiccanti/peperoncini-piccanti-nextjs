@@ -82,11 +82,14 @@ function ReactionBadge({
 }
 
 /**
- * Colonna verticale di contatori vicino all'inizio dell'articolo — non piu'
- * una riga orizzontale a tutta larghezza: nella grafica di riferimento del
- * vecchio sito, Share/Comment/Love sono impilati stretti sul bordo sinistro,
- * col testo dell'articolo che scorre alla loro destra (float, vedi il
- * commento in PostView, app/[...slug]/page.tsx).
+ * Riga orizzontale di contatori prima dell'inizio del testo dell'articolo —
+ * in precedenza era una colonna verticale con "float-left" (testo che
+ * scorreva a destra dei badge, come nel vecchio sito), ma su articoli con
+ * paragrafi brevi la colonna (piu' alta del testo) lasciava un vistoso
+ * spazio vuoto prima del contenuto successivo. Riga orizzontale invece: i
+ * tre badge restano sempre della stessa altezza, nessuno spazio vuoto
+ * possibile indipendentemente dalla lunghezza del testo (vedi il commento
+ * in PostView, app/[...slug]/page.tsx).
  *
  * "Share" e' cliccabile come "Love": apre il popup di condivisione (vedi
  * ShareModal.tsx, stesso comportamento del vecchio sito) E incrementa subito
@@ -105,7 +108,7 @@ export function ArticleReactions({ title, commentsCount }: { title: string; comm
 
 	return (
 		<>
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-row flex-wrap items-start gap-6">
 				<ReactionBadge icon={<Share2 size={18} />} count={shares} label="Share" color="teal" onClick={handleShareClick} />
 				<ReactionBadge icon={<MessageCircle size={18} />} count={commentsCount} label="Comment" color="blu" />
 				<ReactionBadge

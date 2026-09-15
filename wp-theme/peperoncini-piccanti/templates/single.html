@@ -1,0 +1,123 @@
+<!-- wp:template-part {"slug":"header","tagName":"header"} /-->
+
+<!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} -->
+<main class="wp-block-group">
+
+	<!-- wp:group {"align":"full","className":"pp-post-card pp-single-hero","layout":{"type":"default"}} -->
+	<div class="wp-block-group alignfull pp-post-card pp-single-hero">
+		<!-- wp:post-featured-image {"style":{"dimensions":{"aspectRatio":"21/9"}}} /-->
+		<!-- wp:peperoncini-piccanti/rating-badge /-->
+	</div>
+	<!-- /wp:group -->
+
+	<!--
+	Layout 2/3 + 1/3 come nelle pagine categoria/tag: a sinistra
+	l'articolo, a destra "Ultimi commenti" + "Tag più utilizzati". Su
+	mobile la sidebar scende sotto l'articolo.
+	-->
+	<!-- wp:group {"align":"wide","className":"pp-layout-sidebar","style":{"spacing":{"padding":{"top":"var:preset|spacing|30","bottom":"var:preset|spacing|30"}}},"layout":{"type":"default"}} -->
+	<div class="wp-block-group alignwide pp-layout-sidebar" style="padding-top:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--30)">
+
+		<!-- wp:group {"tagName":"article","layout":{"type":"constrained"}} -->
+		<article class="wp-block-group">
+
+			<!-- wp:post-terms {"term":"category","className":"pp-term-pills"} /-->
+
+			<!-- wp:post-title {"level":1} /-->
+
+			<!-- wp:group {"style":{"typography":{"fontSize":"0.85rem"},"spacing":{"blockGap":"0.75rem"}},"textColor":"testo-secondario","layout":{"type":"flex","flexWrap":"wrap"}} -->
+			<div class="wp-block-group has-testo-secondario-color has-text-color" style="font-size:0.85rem">
+				<!-- wp:post-author {"showAvatar":false,"showBio":false} /-->
+				<!-- wp:post-date /-->
+			</div>
+			<!-- /wp:group -->
+
+			<!--
+			Reazioni (Share/Commenti/Love) incolonnate a sinistra col testo
+			del primo paragrafo che scorre a destra (float, come nel sito
+			attuale) — vedi .pp-reactions in assets/css/style.css.
+			-->
+			<!-- wp:peperoncini-piccanti/reactions /-->
+
+			<!-- wp:post-content {"layout":{"type":"constrained"}} /-->
+
+			<!-- wp:spacer {"height":"0.5rem"} -->
+			<div style="height:0.5rem" aria-hidden="true" class="wp-block-spacer"></div>
+			<!-- /wp:spacer -->
+
+			<!-- wp:peperoncini-piccanti/review-breakdown /-->
+
+			<!-- wp:peperoncini-piccanti/share-buttons /-->
+
+			<!-- wp:post-terms {"term":"post_tag","prefix":"Tag: ","className":"pp-tag-list"} /-->
+
+			<!-- wp:separator {"opacity":"css"} -->
+			<hr class="wp-block-separator has-alpha-channel-opacity" />
+			<!-- /wp:separator -->
+
+			<!-- wp:group {"backgroundColor":"sfondo-chiaro","style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|20","right":"var:preset|spacing|20"}},"blockGap":"0.75rem"},"layout":{"type":"flex","flexWrap":"nowrap","verticalAlignment":"center"}} -->
+			<div class="wp-block-group has-sfondo-chiaro-background-color has-background" style="padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--20);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--20)">
+				<!-- wp:post-author {"showAvatar":true,"showBio":true,"avatarSize":64} /-->
+			</div>
+			<!-- /wp:group -->
+
+			<!-- wp:comments-title /-->
+			<!-- wp:comments {"layout":{"type":"constrained"}} -->
+			<div class="wp-block-comments">
+				<!-- wp:comment-template -->
+					<!-- wp:columns -->
+					<div class="wp-block-columns">
+						<!-- wp:column {"width":"40px"} -->
+						<div class="wp-block-column" style="flex-basis:40px"><!-- wp:avatar {"size":40,"style":{"border":{"radius":"999px"}}} /--></div>
+						<!-- /wp:column -->
+						<!-- wp:column -->
+						<div class="wp-block-column">
+							<!-- wp:comment-author-name /-->
+							<!-- wp:comment-date /-->
+							<!-- wp:comment-content /-->
+							<!-- wp:comment-reply-link /-->
+						</div>
+						<!-- /wp:column -->
+					</div>
+					<!-- /wp:columns -->
+				<!-- /wp:comment-template -->
+
+				<!-- wp:comments-pagination -->
+					<!-- wp:comments-pagination-previous /-->
+					<!-- wp:comments-pagination-numbers /-->
+					<!-- wp:comments-pagination-next /-->
+				<!-- /wp:comments-pagination -->
+
+				<!-- wp:post-comments-form /-->
+			</div>
+			<!-- /wp:comments -->
+
+		</article>
+		<!-- /wp:group -->
+
+		<!-- wp:group {"className":"pp-layout-sidebar__sidebar","layout":{"type":"default"}} -->
+		<div class="wp-block-group pp-layout-sidebar__sidebar">
+
+			<!-- wp:group {"className":"pp-comments-widget","layout":{"type":"default"}} -->
+			<div class="wp-block-group pp-comments-widget">
+				<!-- wp:heading {"level":2,"style":{"typography":{"fontSize":"1.5rem"}}} -->
+				<h2 class="wp-block-heading" style="font-size:1.5rem">Ultimi commenti</h2>
+				<!-- /wp:heading -->
+				<!-- wp:latest-comments {"commentsToShow":7,"displayAvatar":false,"displayDate":true,"displayExcerpt":true} /-->
+			</div>
+			<!-- /wp:group -->
+
+			<!-- wp:peperoncini-piccanti/popular-tags /-->
+
+		</div>
+		<!-- /wp:group -->
+
+	</div>
+	<!-- /wp:group -->
+
+	<!-- wp:peperoncini-piccanti/related-posts {"limit":3} /-->
+
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->

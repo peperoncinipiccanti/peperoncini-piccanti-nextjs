@@ -1,0 +1,12 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/review-breakdown",
+	"title": "Blocco Recensione (dettaglio)",
+	"category": "widgets",
+	"description": "Anello grande col punteggio finale, titolo e sommario della recensione, e una barra per ciascun Review Criteria — solo sugli articoli marcati come review.",
+	"textdomain": "peperoncini-piccanti",
+	"usesContext": [ "postId" ],
+	"supports": { "html": false },
+	"render": "file:./render.php"
+}

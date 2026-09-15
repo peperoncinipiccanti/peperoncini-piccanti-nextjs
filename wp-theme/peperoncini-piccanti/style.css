@@ -1,0 +1,19 @@
+/*
+Theme Name: Peperoncini Piccanti
+Theme URI: https://www.peperoncinipiccanti.com
+Author: Daniele
+Description: Tema a blocchi (FSE) per PeperonciniPiccanti.com. Rifacimento tecnico del tema storico "Edition", aggiornato in parallelo alla migrazione headless (Next.js/Vercel) per restarne il "piano B" sempre pronto: stessa identita' visiva, stesse funzionalita' (post piu' visti, recensioni con Review Criteria, reazioni Share/Love, articoli correlati, caroselli per tag), lette pero' direttamente dal database di WordPress — nessuna dipendenza da Vercel, Next.js o da alcun plugin esterno per funzionare. Markup semantico moderno, zero Bootstrap/jQuery, ottimizzato per Core Web Vitals e SEO.
+Requires at least: 6.5
+Tested up to: 7.1
+Requires PHP: 7.4
+Version: 1.1.0
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: peperoncini-piccanti
+Tags: blog, food-and-drink, one-column, custom-colors, full-site-editing, block-patterns
+
+Questo file serve solo come intestazione richiesta da WordPress per i temi a blocchi.
+Tutti gli stili "sorgente" sono in theme.json; le eccezioni non gestibili da
+theme.json (badge piccantezza, carosello hero, blocchi dinamici v1.1.0)
+sono in assets/css/style.css. Changelog versioni in fondo a README.md.
+*/

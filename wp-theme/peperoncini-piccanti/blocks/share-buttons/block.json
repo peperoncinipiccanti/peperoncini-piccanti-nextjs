@@ -1,0 +1,12 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/share-buttons",
+	"title": "Pulsanti di condivisione",
+	"category": "widgets",
+	"description": "Riga di pulsanti di condivisione (Facebook, X, WhatsApp, Pinterest, copia link) in fondo all'articolo.",
+	"textdomain": "peperoncini-piccanti",
+	"usesContext": [ "postId" ],
+	"supports": { "html": false },
+	"render": "file:./render.php"
+}

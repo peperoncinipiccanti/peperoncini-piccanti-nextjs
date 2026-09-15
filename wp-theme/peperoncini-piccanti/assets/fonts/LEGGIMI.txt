@@ -1,0 +1,8 @@
+Questa cartella e' vuota di proposito.
+
+Il tema funziona gia' cosi' com'e' (usa i font di sistema come fallback,
+zero richieste esterne, zero CLS da font). Per usare Lato "vero" come nel
+sito attuale, in autonomia (senza dipendere da Google Fonts, meglio per
+performance e per la privacy/GDPR) segui i passaggi nel documento
+"Guida SEO e Performance" allegato: scarica i 4 file .woff2, mettili qui,
+poi incolla lo snippet "fontFace" indicato nel documento dentro theme.json.

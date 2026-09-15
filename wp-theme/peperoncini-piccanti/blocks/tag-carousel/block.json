@@ -1,0 +1,17 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "peperoncini-piccanti/tag-carousel",
+	"title": "Carosello per tag",
+	"category": "widgets",
+	"description": "Scorrimento orizzontale di tutti gli articoli con un certo tag (usato per \"Peperoncino e Salute\" e \"Come conservare i peperoncini\"): un articolo nuovo con quel tag compare qui in automatico.",
+	"textdomain": "peperoncini-piccanti",
+	"supports": { "html": false, "align": true },
+	"attributes": {
+		"tagSlug": { "type": "string", "default": "" },
+		"heading": { "type": "string", "default": "" },
+		"limit": { "type": "number", "default": 20 },
+		"variant": { "type": "string", "default": "single" }
+	},
+	"render": "file:./render.php"
+}

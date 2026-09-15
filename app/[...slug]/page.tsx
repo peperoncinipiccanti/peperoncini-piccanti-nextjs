@@ -291,12 +291,13 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 					 */}
 					<ArticleReactionsProvider postId={post.id} slug={post.slug} initialShares={post.shares} initialLoves={post.loves}>
 						{/*
-						 * "float-left" (non un flex/grid a fianco del contenuto): come nel
-						 * vecchio sito, i tre badge restano incolonnati sul bordo sinistro
-						 * e il testo del primo paragrafo dell'articolo gli scorre attorno
-						 * a destra, invece di occupare una riga propria a tutta larghezza.
+						 * Riga orizzontale (non piu' "float-left" incolonnato a sinistra
+						 * del testo): sui paragrafi brevi la vecchia colonna, piu' alta del
+						 * testo, lasciava uno spazio vuoto vistoso prima del contenuto
+						 * successivo. Ora e' un blocco a se' stante prima dell'inizio del
+						 * testo, altezza fissa indipendente dalla lunghezza del paragrafo.
 						 */}
-						<div className="float-left mb-4 mr-6 mt-6">
+						<div className="mb-6 mt-6">
 							<ArticleReactions title={post.title} commentsCount={postComments.length} />
 						</div>
 
@@ -315,9 +316,6 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 							html={post.content}
 							className="prose prose-neutral max-w-none prose-headings:font-black prose-headings:uppercase prose-a:text-teal hover:prose-a:text-corallo prose-img:w-full"
 						/>
-
-						{/* clear-both: evita che il badge "float" si sovrapponga al blocco recensione/pulsanti sotto se l'articolo e' molto corto. */}
-						<div className="clear-both" />
 
 						{/* Blocco "Recensione" col dettaglio dei Review Criteria — solo sugli articoli marcati come review, vedi ReviewBreakdown.tsx. */}
 						<ReviewBreakdown post={post} />
