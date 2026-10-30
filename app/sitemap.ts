@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { getAllCategories, getAllPostSlugs } from '@/lib/wp';
+import { getAllCategories, getAllPostSlugs, getCategoryPath } from '@/lib/wp';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.peperoncinipiccanti.com';
 
@@ -31,10 +31,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		});
 	}
 
+	// Percorso gerarchico, lo stesso del canonical (vedi getCategoryPath() in
+	// lib/wp.ts): /varieta-peperoncino/peperoncini-piu-piccanti-al-mondo,
+	// non /peperoncini-piu-piccanti-al-mondo che ora e' un redirect.
 	const categories = await getAllCategories();
-	for (const category of categories) {
+	const categoryPaths = await Promise.all(categories.map((category) => getCategoryPath(category)));
+	for (const path of categoryPaths) {
 		entries.push({
-			url: `${siteUrl}/${category.slug}`,
+			url: `${siteUrl}${path}`,
 			changeFrequency: 'weekly',
 			priority: 0.6,
 		});

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AboutSection } from '@/components/AboutSection';
@@ -9,6 +10,13 @@ import { ReviewsCarousel } from '@/components/ReviewsCarousel';
 import { SocialFansCounter } from '@/components/SocialFansCounter';
 import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments, getTagBySlug } from '@/lib/wp';
 import { getSocialFanCounts } from '@/lib/social';
+import { OG_BASE } from '@/lib/site';
+
+// Title e description restano quelli di default del layout.
+export const metadata: Metadata = {
+	alternates: { canonical: '/' },
+	openGraph: { ...OG_BASE, type: 'website', url: '/' },
+};
 
 const NO_POSTS = { posts: [], totalPages: 1, total: 0 };
 

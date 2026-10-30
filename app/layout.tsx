@@ -32,11 +32,10 @@ export const metadata: Metadata = {
 		locale: 'it_IT',
 		siteName: SITE_NAME,
 	},
-	alternates: {
-		types: {
-			'application/rss+xml': `${SITE_URL}/feed.xml`,
-		},
-	},
+	// Nessun `alternates` qui: il canonical va dichiarato pagina per pagina
+	// (un canonical nel layout finirebbe ereditato da ogni pagina che non lo
+	// sovrascrive, puntandole tutte alla home). Il vecchio link al feed RSS
+	// /feed.xml e' stato tolto perche' quella route non esiste (rispondeva 404).
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
