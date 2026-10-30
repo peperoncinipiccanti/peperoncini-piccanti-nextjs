@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { ArticleContent } from '@/components/ArticleContent';
 import { ArticleReactions } from '@/components/ArticleReactions';
 import { ArticleReactionsProvider } from '@/components/ArticleReactionsProvider';
@@ -17,17 +17,17 @@ import { RelatedPosts } from '@/components/RelatedPosts';
 import { ReviewBreakdown } from '@/components/ReviewBreakdown';
 import { ShareButtons } from '@/components/ShareButtons';
 import { ViewTracker } from '@/components/ViewTracker';
+import { archiveCanonical, parsePage, resolveRoute } from '@/lib/routes';
+import type { Post } from '@/lib/types';
 import { articleSchema, breadcrumbSchema, reviewSchema } from '@/lib/schema';
+import { OG_BASE } from '@/lib/site';
 import {
-	getCategoryBySlug,
 	getPopularPosts,
 	getPopularTags,
-	getPostBySlug,
 	getPostComments,
 	getPosts,
 	getRecentComments,
 	getRelatedPosts,
-	getTagBySlug,
 } from '@/lib/wp';
 
 type Props = {
@@ -36,33 +36,35 @@ type Props = {
 };
 
 /**
- * Route "catch-all": risolve sia gli articoli (/trinidad-scorpion/) sia le
- * categorie, anche annidate (/varieta-peperoncino/peperoncini-piu-piccanti-al-mondo/),
- * cosi' gli URL restano identici a quelli del sito attuale — nessun redirect,
- * nessuna perdita di posizionamento SEO.
+ * Route "catch-all": articoli (/trinidad-scorpion), categorie anche annidate
+ * (/varieta-peperoncino/peperoncini-piu-piccanti-al-mondo) e tag
+ * (/tag/salse), con gli stessi percorsi del vecchio sito WordPress.
  *
- * La corrispondenza avviene sull'ultimo segmento del percorso: gli articoli
- * di questo sito hanno slug piatti e univoci, e lo slug di una categoria
- * WordPress non include i segmenti dei genitori. Per una validazione piu'
- * rigorosa dell'intero percorso gerarchico (utile se in futuro due categorie
- * di genitori diversi condividessero lo stesso slug figlio) si puo' estendere
- * questa funzione confrontando anche `category.parent`.
+ * Ogni contenuto ha un solo indirizzo valido, deciso da resolveRoute() in
+ * lib/routes.ts: le varianti note (maiuscole, sottocategoria senza
+ * genitore, vecchi permalink con la data) ricevono un redirect permanente,
+ * qualsiasi altro percorso un 404. Lo stesso indirizzo finisce nel tag
+ * canonical, nella sitemap e nel breadcrumb.
  */
-function lastSegment(slug: string[]) {
-	return slug[slug.length - 1] ?? '';
+function joinSlug(slug: string[]) {
+	return slug.join('/');
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
 	const { slug } = await params;
-	const post = await getPostBySlug(lastSegment(slug));
+	const route = await resolveRoute(joinSlug(slug));
 
-	if (post) {
+	if (route.kind === 'post') {
+		const { post, path } = route;
 		const description = post.excerpt.replace(/<[^>]+>/g, '').trim().slice(0, 160);
 		return {
 			title: post.title,
 			description,
+			alternates: { canonical: path },
 			openGraph: {
+				...OG_BASE,
 				type: 'article',
+				url: path,
 				title: post.title,
 				description,
 				images: post.featuredImage ? [{ url: post.featuredImage.url }] : undefined,
@@ -70,16 +72,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 		};
 	}
 
-	const category = await getCategoryBySlug(lastSegment(slug));
-	if (category) {
-		return { title: category.name, description: category.description || undefined };
+	if (route.kind === 'category' || route.kind === 'tag') {
+		const term = route.kind === 'category' ? route.category : route.tag;
+		// searchParams si legge solo qui, negli archivi: vedi il commento in
+		// CatchAllPage sul perche' gli articoli non devono mai toccarlo.
+		const { pagina } = await searchParams;
+		const canonical = archiveCanonical(route.path, parsePage(pagina));
+		return {
+			title: term.name,
+			description: term.description || undefined,
+			alternates: { canonical },
+			openGraph: { ...OG_BASE, type: 'website', url: canonical, title: term.name },
+		};
 	}
 
-	const tag = await getTagBySlug(lastSegment(slug));
-	if (tag) {
-		return { title: tag.name, description: tag.description || undefined };
-	}
-
+	// Redirect e 404: la pagina non viene mai mostrata, nessun metadata da aggiungere.
 	return {};
 }
 
@@ -99,44 +106,30 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 	// articoli tornano cacheable via ISR (revalidate: 3600 in lib/wp.ts +
 	// revalidazione mirata via webhook, vedi app/api/revalidate/route.ts).
 	const { slug } = await params;
-	const target = lastSegment(slug);
+	const route = await resolveRoute(joinSlug(slug));
 
-	const post = await getPostBySlug(target);
-	if (post) {
-		return PostView({ post });
+	switch (route.kind) {
+		case 'redirect':
+			// 308 permanente: per Google equivale a un 301.
+			return permanentRedirect(route.to);
+		case 'notFound':
+			return notFound();
+		case 'post':
+			return PostView({ post: route.post, path: route.path });
+		case 'category':
+		case 'tag': {
+			// Stesso layout 2/3 + 1/3 per categorie e tag (/tag/nome-tag nel vecchio tema).
+			const term = route.kind === 'category' ? route.category : route.tag;
+			const { pagina } = await searchParams;
+			return ArchiveView({
+				title: term.name,
+				description: term.description || undefined,
+				postsQuery: route.kind === 'category' ? { categoryId: term.id } : { tagId: term.id },
+				page: parsePage(pagina),
+				basePath: route.path,
+			});
+		}
 	}
-
-	const category = await getCategoryBySlug(target);
-	if (category) {
-		const { pagina } = await searchParams;
-		const page = Math.max(1, Number(pagina) || 1);
-		return ArchiveView({
-			title: category.name,
-			description: category.description || undefined,
-			postsQuery: { categoryId: category.id },
-			page,
-			basePath: `/${slug.join('/')}`,
-		});
-	}
-
-	// Pagina archivio di un tag (/tag/nome-tag/ nel vecchio tema): stesso
-	// layout 2/3 + 1/3 delle categorie, la corrispondenza avviene sempre
-	// sull'ultimo segmento del percorso, quindi il prefisso "/tag/" non deve
-	// essere gestito esplicitamente qui.
-	const tag = await getTagBySlug(target);
-	if (tag) {
-		const { pagina } = await searchParams;
-		const page = Math.max(1, Number(pagina) || 1);
-		return ArchiveView({
-			title: tag.name,
-			description: tag.description || undefined,
-			postsQuery: { tagId: tag.id },
-			page,
-			basePath: `/${slug.join('/')}`,
-		});
-	}
-
-	notFound();
 }
 
 /**
@@ -163,14 +156,21 @@ async function ArchiveView({
 	// sommare i tempi di risposta. perPage: 8, non 9 — la griglia e' a 2
 	// colonne, 8 riempie esattamente 4 righe complete invece di lasciare
 	// un'ultima card spaiata da sola.
-	const [{ posts, totalPages }, popular, recentComments, popularTags] = await Promise.all([
-		getPosts({ ...postsQuery, page, perPage: 8 }),
+	const [postsResult, popular, recentComments, popularTags] = await Promise.all([
+		// Oltre l'ultima pagina WordPress risponde 400 (rest_post_invalid_page_number)
+		// e getPosts() lancia un errore: prima diventava un 500, ora e' un 404.
+		// Sulla prima pagina invece un errore e' un problema vero e resta tale.
+		getPosts({ ...postsQuery, page, perPage: 8 }).catch((error: unknown) => {
+			if (page > 1) return null;
+			throw error;
+		}),
 		getPopularPosts(5),
 		getRecentComments(7),
 		getPopularTags(12),
 	]);
 
-	if (posts.length === 0 && page === 1) notFound();
+	if (!postsResult || postsResult.posts.length === 0) notFound();
+	const { posts, totalPages } = postsResult;
 
 	return (
 		<main className="mx-auto max-w-6xl px-4 py-14">
@@ -209,7 +209,7 @@ async function ArchiveView({
 	);
 }
 
-async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>> }) {
+async function PostView({ post, path: postPath }: { post: Post; path: string }) {
 	const formattedDate = new Date(post.date).toLocaleDateString('it-IT', {
 		day: 'numeric',
 		month: 'long',
@@ -225,10 +225,8 @@ async function PostView({ post }: { post: NonNullable<Awaited<ReturnType<typeof 
 		getPostComments(post.id),
 	]);
 
-	// Slug piatti e univoci su questo sito (vedi il commento su lastSegment()
-	// in cima al file): il percorso reale dell'articolo e' sempre `/<slug>`,
-	// a prescindere da eventuali categorie annidate.
-	const postPath = `/${post.slug}`;
+	// postPath arriva da resolveRoute(): e' sempre `/<slug>`, lo stesso
+	// indirizzo dichiarato come canonical in generateMetadata.
 	const review = reviewSchema(post, postPath);
 
 	return (
