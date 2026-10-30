@@ -109,6 +109,71 @@ function fixContentImageSizes(html: string): string {
 }
 
 /**
+ * Link interni scritti dentro il testo degli articoli: nel database sono
+ * salvati come li generava il vecchio WordPress, cioe' assoluti e con lo
+ * slash finale ("https://www.peperoncinipiccanti.com/olio-piccante/"), e in
+ * qualche caso verso il dominio del CMS, in noindex. Sul sito attuale ogni
+ * clic su quei link passava da un redirect, e quelli verso il CMS portavano
+ * fuori dal sito.
+ *
+ * Qui si riscrivono, solo al momento del render e senza toccare il database,
+ * nel formato definitivo: percorso relativo, senza slash finale
+ * ("/olio-piccante"). Restano com'erano i link a file e immagini
+ * (/wp-content/..., estensioni come .jpg o .pdf) e quelli alle aree tecniche
+ * di WordPress, che non sono pagine del sito.
+ */
+const OWN_LINK = /(\bhref=)(["'])(?:(?:https?:)?\/\/(?:www\.|cms\.)?peperoncinipiccanti\.com)?(\/[^"'?#]*)?([?#][^"']*)?\2/gi;
+
+function normalizeInternalLinks(html: string): string {
+	return html.replace(OWN_LINK, (match, attr: string, quote: string, path: string | undefined, rest: string | undefined) => {
+		// Un href relativo senza "/" iniziale (es. "#nota" o "pagina.html") non
+		// viene catturato come percorso: si lascia invariato.
+		if (path === undefined && !/peperoncinipiccanti\.com/i.test(match)) return match;
+
+		const p = path ?? '/';
+		const isFileOrSystem = /^\/wp-(content|admin|includes|json|login)/i.test(p) || /\.[a-z0-9]{2,5}$/i.test(p);
+		if (isFileOrSystem) return match;
+
+		const clean = p.length > 1 ? p.replace(/\/+$/, '') : p;
+		return `${attr}${quote}${clean}${rest ?? ''}${quote}`;
+	});
+}
+
+/** Decodifica le entita' HTML piu' comuni nei riassunti di WordPress (&#8217;, &hellip;, &nbsp;...). */
+function decodeEntities(input: string): string {
+	const named: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ', hellip: '…' };
+	return input
+		.replace(/&#(\d+);?/g, (_m, code: string) => String.fromCodePoint(Number(code)))
+		.replace(/&#x([0-9a-f]+);?/gi, (_m, code: string) => String.fromCodePoint(parseInt(code, 16)))
+		.replace(/&([a-z]+);/gi, (m, name: string) => named[name.toLowerCase()] ?? m);
+}
+
+/**
+ * Meta description di un articolo: quella scritta in Yoast (presente su
+ * quasi tutti gli articoli) e, se manca, il riassunto di WordPress.
+ * Prima il frontend usava solo il riassunto, che e' vuoto sulla maggior
+ * parte degli articoli: 107 pagine su 140 uscivano senza description,
+ * anche se in Yoast c'era gia'.
+ *
+ * Il riassunto si ripulisce da tag, entita' e dal "[…]" finale aggiunto da
+ * WordPress, e si taglia a fine parola entro 160 caratteri.
+ */
+function metaDescription(raw: WPPost): string {
+	const yoast = raw.yoast_head_json?.description?.trim();
+	if (yoast) return yoast;
+
+	const text = decodeEntities((raw.excerpt?.rendered ?? '').replace(/<[^>]+>/g, ' '))
+		.replace(/\s*\[(?:…|\.\.\.)\]\s*$/, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	if (text.length <= 160) return text;
+
+	const cut = text.slice(0, 159);
+	const lastSpace = cut.lastIndexOf(' ');
+	return `${(lastSpace > 100 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:.]+$/, '')}…`;
+}
+
+/**
  * Sceglie l'URL migliore per un'immagine in evidenza: su questo sito, per
  * molte foto caricate anni fa, il file "full" a piena risoluzione non esiste
  * piu' sul server (restano solo le varianti ridimensionate generate da WP),
@@ -159,12 +224,12 @@ function normalizePost(raw: WPPost): Post {
 		date: raw.date,
 		modified: raw.modified ?? raw.date,
 		title: decodeHtmlEntities(raw.title.rendered),
-		// `excerpt` non e' richiesto da getPosts() (vedi `_fields` sopra: le
-		// pagine "elenco" non lo usano) — opzionale a runtime, da qui il
-		// fallback: solo getPostBySlug()/getFeaturedPosts() lo popolano
-		// davvero (embed completo), e sono le uniche a leggere post.excerpt.
-		excerpt: raw.excerpt?.rendered ?? '',
-		content: fixContentImageSizes(raw.content.rendered),
+		// Ne' `excerpt` ne' `yoast_head_json` sono richiesti da getPosts() (vedi
+		// `_fields` sotto: le pagine "elenco" non li usano), quindi li' il
+		// risultato e' una stringa vuota: solo getPostBySlug()/getFeaturedPosts()
+		// li ricevono davvero, e sono le uniche a leggere post.excerpt.
+		excerpt: metaDescription(raw),
+		content: normalizeInternalLinks(fixContentImageSizes(raw.content.rendered)),
 		rating: ratingIsValid ? rating : null,
 		// Stesso criterio di `rating`: solo i post marcati come review nel
 		// backoffice hanno un punteggio valido, quindi solo loro un blocco

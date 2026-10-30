@@ -51,6 +51,14 @@ export interface WPPost {
 	content: WPRendered;
 	/** Assente quando la richiesta usa `_fields` senza includerlo (vedi getPosts() in lib/wp.ts, che non ne ha bisogno per le pagine "elenco"). */
 	excerpt?: WPRendered;
+	/**
+	 * Dati SEO di Yoast, aggiunti da Yoast alla REST API. Qui serve solo la
+	 * meta description scritta in redazione (testo semplice, gia' decodificato).
+	 * Assente quando la richiesta usa `_fields` senza includerlo.
+	 */
+	yoast_head_json?: {
+		description?: string;
+	};
 	author: number;
 	featured_media: number;
 	categories: number[];
@@ -158,6 +166,12 @@ export interface Post {
 	/** Data ultima modifica (per `dateModified` in schema.org/Article, vedi lib/schema.ts). Assente sulle risposte che non includono `modified` (es. getPosts(), che non lo richiede via `_fields`): in quel caso normalizePost() ripiega su `date`. */
 	modified: string;
 	title: string;
+	/**
+	 * Testo usato come meta description e come `description` nello schema
+	 * Article: la meta description di Yoast se compilata, altrimenti il
+	 * riassunto di WordPress ripulito (testo semplice, max 160 caratteri).
+	 * Vedi metaDescription() in lib/wp.ts.
+	 */
 	excerpt: string;
 	content: string;
 	/**
