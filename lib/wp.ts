@@ -376,6 +376,41 @@ export async function getAllCategories(): Promise<WPCategory[]> {
 }
 
 /**
+ * Percorso pubblico di una categoria, ricostruito dalla gerarchia di
+ * WordPress come faceva il vecchio sito (permalink delle categorie senza
+ * base "/category/"): "/varieta-peperoncino" per una categoria di primo
+ * livello, "/varieta-peperoncino/peperoncini-piu-piccanti-al-mondo" per una
+ * sottocategoria. E' l'UNICO indirizzo valido per quella categoria: la
+ * route catch-all lo usa per decidere cosa servire, cosa reindirizzare e
+ * cosa mandare in 404, la sitemap per elencarlo e il tag canonical per
+ * dichiararlo.
+ *
+ * Legge l'albero completo (anche le categorie vuote, che possono comunque
+ * essere genitori) in una sola chiamata leggera e messa in cache, invece di
+ * risalire i genitori uno per uno.
+ */
+export async function getCategoryPath(category: Pick<WPCategory, 'id' | 'slug' | 'parent'>): Promise<string> {
+	const tree = await wpFetch<{ id: number; slug: string; parent: number }[]>(
+		'/categories?per_page=100&_fields=id,slug,parent',
+		{ tags: ['categories'] }
+	);
+	const byId = new Map(tree.map((c) => [c.id, c]));
+
+	const segments = [category.slug];
+	let parentId = category.parent ?? byId.get(category.id)?.parent ?? 0;
+	// Il limite di profondita' evita un ciclo infinito se il database avesse
+	// (per errore) una categoria che e' antenata di se stessa.
+	for (let depth = 0; parentId && depth < 10; depth++) {
+		const parent = byId.get(parentId);
+		if (!parent) break;
+		segments.unshift(parent.slug);
+		parentId = parent.parent;
+	}
+
+	return `/${segments.join('/')}`;
+}
+
+/**
  * Slug + data di TUTTI gli articoli, per la sitemap (app/sitemap.ts): a
  * differenza di getPosts(), niente `_embed` (la sitemap non ha bisogno di
  * foto/autore/tassonomie) e `_fields` per limitare la risposta ai soli due

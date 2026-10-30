@@ -86,6 +86,8 @@ export interface WPCategory {
 	slug: string;
 	description: string;
 	count: number;
+	/** Solo categorie: id della categoria genitore (0 = primo livello). Assente nei tag. */
+	parent?: number;
 }
 
 /**
