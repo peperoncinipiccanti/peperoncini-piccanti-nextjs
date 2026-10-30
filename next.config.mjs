@@ -59,14 +59,22 @@ const nextConfig = {
 	// eventuale search-replace nel DB, perche' pagine gia' in cache (Google,
 	// social, browser dei visitatori) o riferimenti mai puliti resterebbero
 	// comunque rotti. Questo rewrite inoltra in modo trasparente qualsiasi
-	// richiesta /wp-content/* al backend WordPress reale (cms.*), qualunque
-	// dominio la richieda: una rete di sicurezza permanente, non solo una
-	// soluzione temporanea pre-migrazione DB.
+	// richiesta /wp-content/uploads/* al backend WordPress reale (cms.*),
+	// qualunque dominio la richieda: una rete di sicurezza permanente, non solo
+	// una soluzione temporanea pre-migrazione DB.
+	//
+	// Solo /wp-content/uploads/ (la libreria media), non tutto /wp-content/:
+	// nessun contenuto del sito usa altri file di wp-content (verificato su
+	// tutti i 140 articoli), e inoltrare anche temi e plugin esponeva sul
+	// dominio pubblico le cartelle interne di WordPress — per esempio
+	// /wp-content/themes/edition rispondeva con un errore del server,
+	// segnalato da Search Console tra gli errori 5xx. Ora quei percorsi
+	// finiscono nella route catch-all e rispondono 404.
 	async rewrites() {
 		return [
 			{
-				source: '/wp-content/:path*',
-				destination: `${(process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '')}/wp-content/:path*`,
+				source: '/wp-content/uploads/:path*',
+				destination: `${(process.env.WP_API_URL ?? 'https://cms.peperoncinipiccanti.com').replace(/\/+$/, '')}/wp-content/uploads/:path*`,
 			},
 		];
 	},
