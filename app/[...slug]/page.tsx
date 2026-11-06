@@ -17,7 +17,7 @@ import { RelatedPosts } from '@/components/RelatedPosts';
 import { ReviewBreakdown } from '@/components/ReviewBreakdown';
 import { ShareButtons } from '@/components/ShareButtons';
 import { ViewTracker } from '@/components/ViewTracker';
-import { archiveCanonical, parsePage, resolveRoute } from '@/lib/routes';
+import { archivePagePath, resolveRoute } from '@/lib/routes';
 import type { Post } from '@/lib/types';
 import { articleSchema, breadcrumbSchema, reviewSchema } from '@/lib/schema';
 import { OG_BASE } from '@/lib/site';
@@ -32,7 +32,6 @@ import {
 
 type Props = {
 	params: Promise<{ slug: string[] }>;
-	searchParams: Promise<{ pagina?: string }>;
 };
 
 /**
@@ -50,7 +49,31 @@ function joinSlug(slug: string[]) {
 	return slug.join('/');
 }
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+/**
+ * Cache delle pagine (ISR): nessun percorso viene generato al build (sarebbe
+ * una chiamata a WordPress per ogni articolo a ogni deploy), ma restituendo
+ * un elenco vuoto Next.js tratta la route come statica: ogni pagina viene
+ * generata alla prima visita, salvata nella cache di Vercel e servita da li'
+ * alle visite successive. Viene rigenerata in background quando scade la
+ * cache dei dati che usa (al massimo ogni ora, 15 minuti per gli articoli per
+ * via dei commenti, vedi lib/wp.ts) o subito, quando WordPress chiama il
+ * webhook /api/revalidate dopo una modifica.
+ *
+ * Senza questa funzione la route era sempre dinamica: ogni visita, anche
+ * dei bot, rigenerava la pagina da zero (header `cache-control: no-store`),
+ * ed e' il motivo per cui la CPU delle funzioni era al 68% del limite del
+ * piano gratuito di Vercel con poche centinaia di visite al mese.
+ *
+ * Perche' la cache funzioni, nessuna parte della pagina deve leggere dati
+ * della singola richiesta (searchParams, cookies(), headers()): per questo
+ * la paginazione degli archivi e' nel percorso (/categoria/page/2) e non in
+ * un parametro "?pagina=".
+ */
+export async function generateStaticParams() {
+	return [];
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
 	const { slug } = await params;
 	const route = await resolveRoute(joinSlug(slug));
 
@@ -74,15 +97,15 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 	if (route.kind === 'category' || route.kind === 'tag') {
 		const term = route.kind === 'category' ? route.category : route.tag;
-		// searchParams si legge solo qui, negli archivi: vedi il commento in
-		// CatchAllPage sul perche' gli articoli non devono mai toccarlo.
-		const { pagina } = await searchParams;
-		const canonical = archiveCanonical(route.path, parsePage(pagina));
+		const canonical = archivePagePath(route.path, route.page);
+		// Le pagine successive alla prima hanno un title proprio, per non
+		// avere decine di pagine con lo stesso title "Ricette Piccanti".
+		const title = route.page > 1 ? `${term.name} – Pagina ${route.page}` : term.name;
 		return {
-			title: term.name,
+			title,
 			description: term.description || undefined,
 			alternates: { canonical },
-			openGraph: { ...OG_BASE, type: 'website', url: canonical, title: term.name },
+			openGraph: { ...OG_BASE, type: 'website', url: canonical, title },
 		};
 	}
 
@@ -90,21 +113,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 	return {};
 }
 
-export default async function CatchAllPage({ params, searchParams }: Props) {
-	// `searchParams` si legge SOLO nei rami categoria/tag qui sotto (dove
-	// serve davvero, per la paginazione `?pagina=`) e mai prima. In Next.js,
-	// leggere searchParams (o cookies()/headers()) durante il render rende
-	// l'intera route "dinamica": se lo si faceva incondizionatamente qui in
-	// cima, anche gli articoli — che non usano affatto la paginazione —
-	// finivano per non essere mai serviti dalla cache Vercel (verificato dal
-	// vivo: header `x-vercel-cache: MISS` e `cache-control: no-store` su
-	// OGNI richiesta, anche ripetuta sulla stessa pagina). Ogni visita reale
-	// rieseguiva quindi da zero la funzione serverless: e' la causa piu'
-	// probabile dell'LCP scadente segnalato da Search Console sulle pagine
-	// articolo a basso traffico (poche visite reali, ma quelle poche cadono
-	// spesso su un cold start). Rimandando la lettura qui sotto, gli
-	// articoli tornano cacheable via ISR (revalidate: 3600 in lib/wp.ts +
-	// revalidazione mirata via webhook, vedi app/api/revalidate/route.ts).
+export default async function CatchAllPage({ params }: Props) {
+	// Nessuna lettura di searchParams/cookies()/headers() qui: renderebbe la
+	// route dinamica e annullerebbe la cache, vedi generateStaticParams sopra.
 	const { slug } = await params;
 	const route = await resolveRoute(joinSlug(slug));
 
@@ -120,12 +131,11 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 		case 'tag': {
 			// Stesso layout 2/3 + 1/3 per categorie e tag (/tag/nome-tag nel vecchio tema).
 			const term = route.kind === 'category' ? route.category : route.tag;
-			const { pagina } = await searchParams;
 			return ArchiveView({
 				title: term.name,
 				description: term.description || undefined,
 				postsQuery: route.kind === 'category' ? { categoryId: term.id } : { tagId: term.id },
-				page: parsePage(pagina),
+				page: route.page,
 				basePath: route.path,
 			});
 		}
@@ -196,7 +206,7 @@ async function ArchiveView({
 						))}
 					</div>
 
-					<Pagination currentPage={page} totalPages={totalPages} basePath={basePath} />
+					<Pagination currentPage={page} totalPages={totalPages} basePath={basePath} linkStyle="path" />
 				</div>
 
 				<div className="flex flex-col gap-10">
