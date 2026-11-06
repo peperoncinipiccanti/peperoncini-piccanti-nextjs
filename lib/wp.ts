@@ -651,9 +651,16 @@ export async function getPostComments(postId: number, perPage = 100): Promise<Po
 			order: 'asc',
 			_fields: 'id,parent,author_name,date,content',
 		});
+		// 15 minuti: e' il ritardo massimo con cui compare un commento appena
+		// approvato da wp-admin (quelli inviati dal sito e gia' approvati
+		// compaiono subito, vedi app/api/comments/route.ts). Era 60 secondi,
+		// ma con la cache delle pagine (vedi generateStaticParams in
+		// app/[...slug]/page.tsx) questo valore decide anche ogni quanto ogni
+		// articolo viene rigenerato: 60 secondi lo rigenerava quasi a ogni
+		// visita, annullando il risparmio di CPU.
 		const comments = await wpFetch<WPComment[]>(`/comments?${params.toString()}`, {
 			tags: [`comments:${postId}`],
-			revalidate: 60,
+			revalidate: 900,
 		});
 
 		return comments.map((c) => ({

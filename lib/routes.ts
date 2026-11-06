@@ -16,8 +16,9 @@ import { getCategoryBySlug, getCategoryPath, getPostBySlug, getTagBySlug } from 
  */
 export type ResolvedRoute =
 	| { kind: 'post'; post: Post; path: string }
-	| { kind: 'category'; category: WPCategory; path: string }
-	| { kind: 'tag'; tag: WPCategory; path: string }
+	/** `path` e' l'archivio (pagina 1); `page` il numero di pagina richiesto (1 = l'archivio stesso). */
+	| { kind: 'category'; category: WPCategory; path: string; page: number }
+	| { kind: 'tag'; tag: WPCategory; path: string; page: number }
 	| { kind: 'redirect'; to: string }
 	| { kind: 'notFound' };
 
@@ -45,24 +46,34 @@ async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 		return { kind: 'redirect', to: `/${lower.join('/')}` };
 	}
 
-	// 2. Vecchia paginazione degli archivi di WordPress: /<archivio>/page/<N>
-	// diventa /<archivio>?pagina=<N> (la pagina 1 e' l'archivio stesso).
-	// Search Console ne segnalava una cinquantina in 404 (es.
-	// /varieta-peperoncino/page/3/): cosi' chi arriva da un vecchio link o
-	// dai risultati di Google trova la pagina giusta.
+	// 2. Pagine successive degli archivi: /<archivio>/page/<N>, lo stesso
+	// formato di WordPress (senza slash finale, come il resto del sito).
+	// Si e' scelto apposta il formato di WordPress, e non un parametro come
+	// "?pagina=N": se un domani il sito torna a essere servito da WordPress,
+	// questi URL restano identici. E un percorso, a differenza di un
+	// parametro, permette di mettere in cache anche le pagine d'archivio
+	// (vedi generateStaticParams in app/[...slug]/page.tsx).
 	const pageIndex = segments.length - 2;
 	if (pageIndex >= 0 && segments[pageIndex] === 'page' && /^\d+$/.test(last)) {
 		const base = segments.slice(0, pageIndex).join('/');
+		const n = Number(last);
 		if (!base) return { kind: 'redirect', to: '/' };
+		if (n < 1) return NOT_FOUND;
 
-		let archive = await resolveUncached(base);
-		// Una sottocategoria con il vecchio percorso corto
-		// (/peperoncini-piu-piccanti-al-mondo/page/2) risolve prima in un
-		// redirect al percorso completo: si segue quello, una volta sola.
-		if (archive.kind === 'redirect') archive = await resolveUncached(archive.to);
+		const archive = await resolveUncached(base);
 		if (archive.kind === 'category' || archive.kind === 'tag') {
-			const n = Number(last);
-			return { kind: 'redirect', to: n > 1 ? `${archive.path}?pagina=${n}` : archive.path };
+			// /page/1 e' l'archivio stesso; "/page/02" diventa "/page/2".
+			if (n === 1 || String(n) !== last) return { kind: 'redirect', to: archivePagePath(archive.path, n) };
+			return { ...archive, page: n };
+		}
+		// Una sottocategoria con il vecchio percorso corto
+		// (/peperoncini-piu-piccanti-al-mondo/page/2) risolve in un redirect
+		// al percorso completo: si reindirizza li', mantenendo la pagina.
+		if (archive.kind === 'redirect') {
+			const target = await resolveUncached(archive.to);
+			if (target.kind === 'category' || target.kind === 'tag') {
+				return { kind: 'redirect', to: archivePagePath(target.path, n) };
+			}
 		}
 		return NOT_FOUND;
 	}
@@ -71,7 +82,7 @@ async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 	if (first === 'tag') {
 		if (segments.length !== 2) return NOT_FOUND;
 		const tag = await getTagBySlug(last);
-		return tag ? { kind: 'tag', tag, path: `/tag/${tag.slug}` } : NOT_FOUND;
+		return tag ? { kind: 'tag', tag, path: `/tag/${tag.slug}`, page: 1 } : NOT_FOUND;
 	}
 
 	// 4. Un solo segmento: articolo, oppure categoria. Una sottocategoria
@@ -84,7 +95,7 @@ async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 		const category = await getCategoryBySlug(first);
 		if (category) {
 			const path = await getCategoryPath(category);
-			return path === `/${first}` ? { kind: 'category', category, path } : { kind: 'redirect', to: path };
+			return path === `/${first}` ? { kind: 'category', category, path, page: 1 } : { kind: 'redirect', to: path };
 		}
 
 		return NOT_FOUND;
@@ -101,7 +112,7 @@ async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 	const category = await getCategoryBySlug(last);
 	if (category) {
 		const path = await getCategoryPath(category);
-		if (path === `/${segments.join('/')}`) return { kind: 'category', category, path };
+		if (path === `/${segments.join('/')}`) return { kind: 'category', category, path, page: 1 };
 	}
 
 	return NOT_FOUND;
@@ -115,16 +126,11 @@ async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 export const resolveRoute = cache(resolveUncached);
 
 /**
- * Numero di pagina da `?pagina=`: 1 per valori assenti, non numerici o
- * minori di 1, cosi' "?pagina=abc" e "?pagina=1" hanno lo stesso canonical
- * della prima pagina.
+ * Indirizzo di una pagina d'archivio: la prima e' l'archivio stesso
+ * (/varieta-peperoncino), le successive /varieta-peperoncino/page/2.
+ * Usato per canonical, link di paginazione e redirect, cosi' il formato e'
+ * deciso in un solo punto.
  */
-export function parsePage(pagina: string | undefined): number {
-	const n = Number(pagina);
-	return Number.isInteger(n) && n > 1 ? n : 1;
-}
-
-/** Canonical di una pagina d'archivio: la prima pagina e' il percorso pulito, le successive puntano a se stesse. */
-export function archiveCanonical(path: string, page: number): string {
-	return page > 1 ? `${path}?pagina=${page}` : path;
+export function archivePagePath(path: string, page: number): string {
+	return page > 1 ? `${path}/page/${page}` : path;
 }

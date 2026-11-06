@@ -74,8 +74,9 @@ export async function POST(request: NextRequest) {
 		// Se per qualche motivo il commento arriva gia' approvato (es. autore di
 		// fiducia, vedi commento sopra) si invalida subito la cache di questo
 		// articolo cosi' compare senza aspettare la finestra di revalidate di
-		// 60s impostata in getPostComments(). Se resta "in attesa" non serve:
-		// non e' comunque visibile finche' non viene approvato in wp-admin.
+		// 15 minuti impostata in getPostComments(). Se resta "in attesa" non
+		// serve: non e' comunque visibile finche' non viene approvato in
+		// wp-admin, e da li' compare entro quei 15 minuti.
 		if (data?.status === 'approved' && postId) {
 			revalidateTag(`comments:${postId}`, 'max');
 		}
