@@ -103,7 +103,7 @@ export function articleSchema(post: Post, path: string) {
 }
 
 /**
- * Product + Review/AggregateRating, solo per gli articoli marcati come
+ * Product + Review (senza AggregateRating, vedi sotto), solo per gli articoli marcati come
  * review nel backoffice WP (post.review non null, vedi normalizePost()) —
  * es. le varieta' di peperoncino col cerchio del punteggio. "Product" e' il
  * tipo che Google riconosce per l'anteprima a stelle nei risultati (le
@@ -140,12 +140,10 @@ export function reviewSchema(post: Post, path: string) {
 				worstRating: 0,
 			},
 		},
-		aggregateRating: {
-			'@type': 'AggregateRating',
-			ratingValue: post.review.score,
-			bestRating: 10,
-			worstRating: 0,
-			reviewCount: 1,
-		},
+		// Niente `aggregateRating`: il voto medio, per Google, deve riassumere
+		// le recensioni degli utenti. Qui c'e' una sola recensione, scritta dal
+		// sito stesso, quindi un "voto medio su 1 recensione" va contro le linee
+		// guida degli snippet di recensione e rischia di far perdere le stelle
+		// nei risultati. La recensione editoriale (`review`) da sola basta.
 	};
 }
