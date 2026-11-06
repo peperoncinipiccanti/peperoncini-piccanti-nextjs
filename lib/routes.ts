@@ -31,12 +31,7 @@ function isLegacyDatePath(segments: string[]): boolean {
 	return segments.length === 4 && /^\d{2}$/.test(maybeDay ?? '');
 }
 
-/**
- * `cache()` di React deduplica la risoluzione tra generateMetadata e il
- * componente pagina della stessa richiesta. Riceve il percorso come stringa
- * (non come array) perche' cache() confronta gli argomenti per identita'.
- */
-export const resolveRoute = cache(async (joinedPath: string): Promise<ResolvedRoute> => {
+async function resolveUncached(joinedPath: string): Promise<ResolvedRoute> {
 	const segments = joinedPath.split('/').filter(Boolean);
 	const first = segments[0];
 	const last = segments[segments.length - 1];
@@ -50,14 +45,36 @@ export const resolveRoute = cache(async (joinedPath: string): Promise<ResolvedRo
 		return { kind: 'redirect', to: `/${lower.join('/')}` };
 	}
 
-	// 2. Archivi dei tag: solo /tag/<slug>.
+	// 2. Vecchia paginazione degli archivi di WordPress: /<archivio>/page/<N>
+	// diventa /<archivio>?pagina=<N> (la pagina 1 e' l'archivio stesso).
+	// Search Console ne segnalava una cinquantina in 404 (es.
+	// /varieta-peperoncino/page/3/): cosi' chi arriva da un vecchio link o
+	// dai risultati di Google trova la pagina giusta.
+	const pageIndex = segments.length - 2;
+	if (pageIndex >= 0 && segments[pageIndex] === 'page' && /^\d+$/.test(last)) {
+		const base = segments.slice(0, pageIndex).join('/');
+		if (!base) return { kind: 'redirect', to: '/' };
+
+		let archive = await resolveUncached(base);
+		// Una sottocategoria con il vecchio percorso corto
+		// (/peperoncini-piu-piccanti-al-mondo/page/2) risolve prima in un
+		// redirect al percorso completo: si segue quello, una volta sola.
+		if (archive.kind === 'redirect') archive = await resolveUncached(archive.to);
+		if (archive.kind === 'category' || archive.kind === 'tag') {
+			const n = Number(last);
+			return { kind: 'redirect', to: n > 1 ? `${archive.path}?pagina=${n}` : archive.path };
+		}
+		return NOT_FOUND;
+	}
+
+	// 3. Archivi dei tag: solo /tag/<slug>.
 	if (first === 'tag') {
 		if (segments.length !== 2) return NOT_FOUND;
 		const tag = await getTagBySlug(last);
 		return tag ? { kind: 'tag', tag, path: `/tag/${tag.slug}` } : NOT_FOUND;
 	}
 
-	// 3. Un solo segmento: articolo, oppure categoria. Una sottocategoria
+	// 4. Un solo segmento: articolo, oppure categoria. Una sottocategoria
 	// richiesta senza il genitore (/peperoncini-piu-piccanti-al-mondo)
 	// viene reindirizzata al suo percorso completo.
 	if (segments.length === 1) {
@@ -73,13 +90,13 @@ export const resolveRoute = cache(async (joinedPath: string): Promise<ResolvedRo
 		return NOT_FOUND;
 	}
 
-	// 4. Vecchi permalink con la data: redirect all'articolo, se esiste.
+	// 5. Vecchi permalink con la data: redirect all'articolo, se esiste.
 	if (isLegacyDatePath(segments)) {
 		const post = await getPostBySlug(last);
 		return post ? { kind: 'redirect', to: `/${post.slug}` } : NOT_FOUND;
 	}
 
-	// 5. Piu' segmenti: valido solo se e' esattamente il percorso gerarchico
+	// 6. Piu' segmenti: valido solo se e' esattamente il percorso gerarchico
 	// di una categoria (/varieta-peperoncino/peperoncini-piu-piccanti-al-mondo).
 	const category = await getCategoryBySlug(last);
 	if (category) {
@@ -88,7 +105,14 @@ export const resolveRoute = cache(async (joinedPath: string): Promise<ResolvedRo
 	}
 
 	return NOT_FOUND;
-});
+}
+
+/**
+ * `cache()` di React deduplica la risoluzione tra generateMetadata e il
+ * componente pagina della stessa richiesta. Riceve il percorso come stringa
+ * (non come array) perche' cache() confronta gli argomenti per identita'.
+ */
+export const resolveRoute = cache(resolveUncached);
 
 /**
  * Numero di pagina da `?pagina=`: 1 per valori assenti, non numerici o

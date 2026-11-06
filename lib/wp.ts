@@ -475,27 +475,37 @@ export async function getCategoryPath(category: Pick<WPCategory, 'id' | 'slug' |
 	return `/${segments.join('/')}`;
 }
 
+/** Voce minima di un articolo per la sitemap, vedi getAllPostSlugs(). */
+export interface PostSitemapRef {
+	slug: string;
+	date: string;
+	/** Ultima modifica in UTC, senza "Z" finale (formato di WordPress). */
+	modified_gmt?: string;
+	/** ID delle categorie dell'articolo, per la data di aggiornamento degli archivi. */
+	categories?: number[];
+}
+
 /**
- * Slug + data di TUTTI gli articoli, per la sitemap (app/sitemap.ts): a
- * differenza di getPosts(), niente `_embed` (la sitemap non ha bisogno di
- * foto/autore/tassonomie) e `_fields` per limitare la risposta ai soli due
- * campi che servono — stesso principio di getFeaturedPostRefs(), stesso
- * motivo: senza, la scansione dell'intero catalogo superava il limite di
- * 2MB per voce della cache dati di Next.js.
+ * Slug, date e categorie di TUTTI gli articoli, per la sitemap
+ * (app/sitemap.ts): a differenza di getPosts(), niente `_embed` (la sitemap
+ * non ha bisogno di foto/autore/tassonomie embeddate) e `_fields` per
+ * limitare la risposta ai soli campi che servono — stesso principio di
+ * getFeaturedPostRefs(), stesso motivo: senza, la scansione dell'intero
+ * catalogo superava il limite di 2MB per voce della cache dati di Next.js.
  */
-export async function getAllPostSlugs(): Promise<{ slug: string; date: string }[]> {
+export async function getAllPostSlugs(): Promise<PostSitemapRef[]> {
 	const perPage = 100;
 	let page = 1;
-	let all: { slug: string; date: string }[] = [];
+	let all: PostSitemapRef[] = [];
 
 	while (true) {
 		const params = new URLSearchParams({
 			page: String(page),
 			per_page: String(perPage),
-			_fields: 'slug,date',
+			_fields: 'slug,date,modified_gmt,categories',
 		});
 
-		const { data, totalPages } = await wpFetchWithHeaders<{ slug: string; date: string }[]>(
+		const { data, totalPages } = await wpFetchWithHeaders<PostSitemapRef[]>(
 			`/posts?${params.toString()}`,
 			{ tags: ['posts'] }
 		);
