@@ -12,10 +12,16 @@ import { getCategoryBySlug, getFeaturedPosts, getPosts, getRecentComments, getTa
 import { getSocialFanCounts } from '@/lib/social';
 import { OG_BASE } from '@/lib/site';
 
-// Title e description restano quelli di default del layout.
+// Title della home: quello scritto in Yoast per la homepage del vecchio
+// sito. `absolute` evita il suffisso " · PeperonciniPiccanti.com" del
+// template del layout: il nome del sito e' gia' all'inizio del title. La
+// description resta quella di default del layout (la stessa di Yoast).
+const HOME_TITLE = 'Peperoncini Piccanti | Varietà, Coltivazione e Ricette con Peperoncino';
+
 export const metadata: Metadata = {
+	title: { absolute: HOME_TITLE },
 	alternates: { canonical: '/' },
-	openGraph: { ...OG_BASE, type: 'website', url: '/' },
+	openGraph: { ...OG_BASE, type: 'website', url: '/', title: HOME_TITLE },
 };
 
 const NO_POSTS = { posts: [], totalPages: 1, total: 0 };
@@ -106,6 +112,13 @@ export default async function HomePage() {
 
 	return (
 		<main id="top">
+			{/*
+			 * H1 della home, letto da Google e dagli screen reader ma nascosto
+			 * a video per non cambiare il layout del vecchio tema (che in home
+			 * non aveva un titolo visibile). Se in futuro il design prevede un
+			 * titolo visibile, basta togliere "sr-only".
+			 */}
+			<h1 className="sr-only">Peperoncini piccanti: varietà, coltivazione, benefici e ricette</h1>
 			<HeroCarousel posts={heroPosts} />
 
 			{/*
